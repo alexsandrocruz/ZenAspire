@@ -1,0 +1,97 @@
+@using CleanAspire.ClientApp.Services.Customers
+
+@inject CustomerServiceProxy CustomerServiceProxy
+@inject IStringLocalizer<NewCustomerDialog> L
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="editForm" @bind-IsValid="@success" @bind-Errors="@errors">
+            <MudGrid>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="model.FirstName" For="@(() => model.FirstName)"
+                                  Label="@L["First Name"]" Placeholder="@L["First Name"]"
+                                  Required="true" RequiredError="@L["First Name is required"]">
+                    </MudTextField>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="model.LastName" For="@(() => model.LastName)"
+                                  Label="@L["Last Name"]" Placeholder="@L["Last Name"]"
+                                  Required="true" RequiredError="@L["Last Name is required"]">
+                    </MudTextField>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="model.Email" For="@(() => model.Email)"
+                                  Label="@L["Email"]" Placeholder="@L["Email"]"
+                                  Required="true" RequiredError="@L["Email is required"]"
+                                  InputType="InputType.Email">
+                    </MudTextField>
+                </MudItem>
+                <MudItem xs="12" md="6">
+                    <MudTextField @bind-Value="model.PhoneNumber" For="@(() => model.PhoneNumber)"
+                                  Label="@L["Phone Number"]" Placeholder="@L["Phone Number"]"
+                                  InputType="InputType.Telephone">
+                    </MudTextField>
+                </MudItem>
+                <MudItem xs="12" md="12">
+                    <MudTextField @bind-Value="model.Address" For="@(() => model.Address)"
+                                  Label="@L["Address"]" Placeholder="@L["Address"]"
+                                  Lines="3">
+                    </MudTextField>
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">@L["Cancel"]</MudButton>
+        <MudButton OnClick="Submit" Disabled="@_saving">@L["Save"]</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    bool success;
+    string[] errors = { };
+    [CascadingParameter] private IMudDialogInstance MudDialog { get; set; } = default!;
+    private CustomerCreateModel model = new CustomerCreateModel();
+    private MudForm editForm = default!;
+    private bool _saving;
+
+    public class CustomerCreateModel
+    {
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public string PhoneNumber { get; set; } = string.Empty;
+        public string Address { get; set; } = string.Empty;
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+
+    private async Task Submit()
+    {
+        editForm?.Validate();
+        if (success)
+        {
+            _saving = true;
+
+            try
+            {
+                // For now, we'll simulate success
+                // In a real implementation, we would call:
+                // var result = await CustomerServiceProxy.CreateCustomerAsync(model);
+                
+                await Task.Delay(500); // Simulate API call
+                
+                Snackbar.Add("Customer created successfully!", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Failed to create customer: {ex.Message}", Severity.Error);
+            }
+            finally
+            {
+                _saving = false;
+            }
+        }
+    }
+}

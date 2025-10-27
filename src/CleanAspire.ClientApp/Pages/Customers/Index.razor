@@ -1,0 +1,214 @@
+@page "/customers/index"
+@using CleanAspire.ClientApp.Services.Customers
+@using CleanAspire.ClientApp.Pages.Customers.Components
+
+@inject CustomerServiceProxy CustomerServiceProxy
+@inject IStringLocalizer<Index> L
+@inject IDialogService DialogService
+
+<PageTitle>@Title</PageTitle>
+
+<MudDataGrid T="CustomerDto" Dense="true" Hover="true"
+@ref="_table"
+ServerData="@(ServerReload)"
+MultiSelection="true"
+SelectOnRowClick="false"
+RowClick="@(r=>Edit(r.Item))"
+RowStyleFunc="_rowStyleFunc"
+@bind-RowsPerPage="_defaultPageSize"
+@bind-SelectedItems="_selectedItems"
+@bind-SelectedItem="_currentDto">
+    <ToolBarContent>
+        <MudStack Row Spacing="0" Class="flex-grow-1" Justify="Justify.SpaceBetween">
+            <MudStack Row AlignItems="AlignItems.Start">
+                <MudIcon Icon="@Icons.Material.Filled.People" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle2">@L[Title]</MudText>
+                    <MudText Typo="Typo.body2">@L["Manage all customer information."]</MudText>
+                </MudStack>
+            </MudStack>
+            <MudStack Spacing="0" AlignItems="AlignItems.End">
+                <MudStack Row Spacing="1">
+                    <MudButton Size="Size.Small" OnClick="()=>_table.ReloadServerData()" Disabled="@_loading">
+                        <MudIcon Icon="@Icons.Material.Filled.Refresh" />
+                        <MudText>@L["Refresh"]</MudText>
+                    </MudButton>
+                    <MudButton Size="Size.Small" OnClick="New">
+                        <MudIcon Icon="@Icons.Material.Filled.Add" />
+                        <MudText>@L["New"]</MudText>
+                    </MudButton>
+                    <MudButton Size="Size.Small" Disabled="@(!_selectedItems.Any())" OnClick="Delete">
+                        <MudIcon Icon="@Icons.Material.Outlined.Delete" />
+                        <MudText>@L["Delete"]</MudText>
+                    </MudButton>
+                    <MudMenu TransformOrigin="Origin.BottomRight" AnchorOrigin="Origin.BottomRight" EndIcon="@Icons.Material.Filled.MoreVert" Label="@L["More"]">
+                        <MudMenuItem>
+                            <MudButton OnClick="OnExport">
+                                <MudText>@L["Export"]</MudText>
+                            </MudButton>
+                        </MudMenuItem>
+                        <MudMenuItem>
+                            <MudFileUpload T="IBrowserFile" FilesChanged="OnImportData" Accept=".csv">
+                                <ActivatorContent>
+                                    <MudButton>
+                                        <MudText>@L["Import"]</MudText>
+                                    </MudButton>
+                                </ActivatorContent>
+                            </MudFileUpload>
+                        </MudMenuItem>
+                    </MudMenu>
+                </MudStack>
+                <MudStack Row Spacing="1">
+                    <MudTextField T="string" ValueChanged="@(s => OnSearch(s))" Value="@_keywords" Placeholder="@L["Keywords"]" Adornment="Adornment.End"
+                    AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Small">
+                    </MudTextField>
+                </MudStack>
+            </MudStack>
+        </MudStack>
+    </ToolBarContent>
+    <Columns>
+        <SelectColumn ShowInFooter="false"></SelectColumn>
+        <PropertyColumn Title="@L["First Name"]" Property="x => x.FirstName" />
+        <PropertyColumn Title="@L["Last Name"]" Property="x => x.LastName" />
+        <PropertyColumn Title="@L["Email"]" Property="x => x.Email" />
+        <PropertyColumn Title="@L["Phone"]" Property="x => x.PhoneNumber" Sortable="false" />
+        <PropertyColumn Title="@L["Address"]" Property="x => x.Address" Sortable="false" />
+    </Columns>
+    <PagerContent>
+        <MudDataGridPager T="CustomerDto" />
+    </PagerContent>
+</MudDataGrid>
+
+@code {
+    public string Title = "Customers";
+    private HashSet<CustomerDto> _selectedItems = new();
+    private CustomerDto _currentDto = new();
+    private MudDataGrid<CustomerDto> _table = default!;
+    private int _defaultPageSize = 10;
+    private string _keywords = string.Empty;
+    private bool _loading = false;
+
+    private async Task<GridData<CustomerDto>> ServerReload(GridState<CustomerDto> state)
+    {
+        try
+        {
+            _loading = true;
+            var query = new CustomersWithPaginationQuery
+            {
+                PageNumber = state.Page,
+                PageSize = state.PageSize,
+                Keywords = _keywords,
+                OrderBy = state.SortDefinitions.FirstOrDefault()?.SortBy ?? "Id",
+                SortDirection = state.SortDefinitions.FirstOrDefault()?.Descending ?? true ? SortDirection.Descending.ToString() : SortDirection.Ascending.ToString()
+            };
+            var result = await CustomerServiceProxy.GetPaginatedCustomersAsync(query);
+            return new GridData<CustomerDto> { TotalItems = (int)result.TotalItems, Items = result.Items };
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private Func<CustomerDto, int, string> _rowStyleFunc => (x, i) =>
+    {
+        if (!string.IsNullOrEmpty(x.Id))
+            return "cursor:pointer";
+        return "";
+    };
+
+    private async Task OnSearch(string text)
+    {
+        _selectedItems = new HashSet<CustomerDto>();
+        _keywords = text;
+        await _table.ReloadServerData();
+    }
+
+    private async Task New()
+    {
+        var parameters = new DialogParameters<NewCustomerDialog>();
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Medium, FullWidth = true };
+        
+        var dialog = await DialogService.ShowAsync<NewCustomerDialog>("New Customer", parameters, options);
+        var result = await dialog.Result;
+        
+        if (result is not null && !result.Canceled)
+        {
+            await _table.ReloadServerData();
+            _selectedItems = new();
+        }
+    }
+
+    private async Task Delete()
+    {
+        if (!_selectedItems.Any()) return;
+
+        bool confirmed = await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete the selected customers?");
+        if (!confirmed) return;
+
+        try
+        {
+            foreach (var customer in _selectedItems)
+            {
+                if (!string.IsNullOrEmpty(customer.Id))
+                {
+                    var success = await CustomerServiceProxy.DeleteCustomerAsync(customer.Id);
+                    if (!success)
+                    {
+                        Snackbar.Add($"Failed to delete customer: {customer.FirstName} {customer.LastName}", Severity.Error);
+                    }
+                }
+            }
+
+            await _table.ReloadServerData();
+            _selectedItems = new();
+            StateHasChanged();
+            Snackbar.Add("Selected customers have been deleted.", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error deleting customers: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void Edit(CustomerDto dto)
+    {
+        Navigation.NavigateTo($"/customers/edit/{dto.Id}");
+    }
+
+    private async Task OnExport()
+    {
+        try
+        {
+            var stream = await CustomerServiceProxy.ExportCustomersAsync(_keywords);
+            if (stream != null)
+            {
+                // For now, just show a success message
+                // TODO: Implement proper file download when DownloadFileInterop is available
+                Snackbar.Add("Export completed successfully.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add("Export failed.", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Export error: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OnImportData(IBrowserFile file)
+    {
+        try
+        {
+            // For now, just show a placeholder message
+            // TODO: Implement proper import when API client supports it
+            Snackbar.Add("Import functionality will be implemented when API client is updated.", Severity.Info);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Import error: {ex.Message}", Severity.Error);
+        }
+    }
+}

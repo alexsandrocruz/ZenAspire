@@ -1,0 +1,13 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run Aspire AppHost",
+			"type": "shell",
+			"command": "dotnet run --project src/CleanAspire.AppHost/CleanAspire.AppHost.csproj",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}

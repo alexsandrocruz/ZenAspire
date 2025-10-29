@@ -1,0 +1,303 @@
+@inject ClientServiceProxy ClientServiceProxy
+@inject ISnackbar Snackbar
+
+<MudDialog @bind-IsOpen="@_isOpen"
+           Class="pa-0"
+           MaxWidth="MaxWidth.Large"
+           DisableSidePadding="true">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Outlined.Business" Class="mr-3" />
+            @(IsEdit ? @L["Edit Client"] : @L["New Client"])
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" Model="@_clientModel" @bind-IsValid="@_isValid">
+            <MudStack Spacing="2">
+                <!-- Basic Information -->
+                <MudText Typo="Typo.subtitle1">@L["Basic Information"]</MudText>
+                <MudTextField T="string"
+                              @bind-Value="_clientModel.Name"
+                              Label="@L["Name *"]"
+                              Required="true"
+                              RequiredError="@L["Name is required"]" />
+
+                <MudTextField T="string"
+                              @bind-Value="_clientModel.TradeName"
+                              Label="@L["Trade Name"]" />
+
+                <MudTextField T="string"
+                              @bind-Value="_clientModel.DocumentNumber"
+                              Label="@L["Document Number"]" />
+
+                <MudTextField T="string"
+                              @bind-Value="_clientModel.Email"
+                              Label="@L["Email"]" />
+
+                <MudTextField T="string"
+                              @bind-Value="_clientModel.Phone"
+                              Label="@L["Phone"]" />
+
+                <MudTextField T="string"
+                              @bind-Value="_clientModel.Website"
+                              Label="@L["Website"]" />
+
+                <MudDivider />
+
+                <!-- Address Information -->
+                <MudText Typo="Typo.subtitle1">@L["Address Information"]</MudText>
+                <MudTextField T="string"
+                              @bind-Value="_clientModel.Address"
+                              Label="@L["Address"]" />
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudTextField T="string"
+                                      @bind-Value="_clientModel.City"
+                                      Label="@L["City"]" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudTextField T="string"
+                                      @bind-Value="_clientModel.State"
+                                      Label="@L["State"]" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudTextField T="string"
+                                      @bind-Value="_clientModel.PostalCode"
+                                      Label="@L["Postal Code"]" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudTextField T="string"
+                                      @bind-Value="_clientModel.Country"
+                                      Label="@L["Country"]" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudDivider />
+
+                <!-- Business Information -->
+                <MudText Typo="Typo.subtitle1">@L["Business Information"]</MudText>
+                <MudSelect T="int"
+                            @bind-Value="_clientModel.Type"
+                            Label="@L["Client Type *"]"
+                            Required="true">
+                    @foreach (var clientType in GetClientTypes())
+                    {
+                        <MudSelectItem Value="@clientType.Value">@clientType.Text</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect T="int"
+                            @bind-Value="_clientModel.Status"
+                            Label="@L["Status *"]"
+                            Required="true">
+                    @foreach (var status in GetStatusOptions())
+                    {
+                        <MudSelectItem Value="@status.Value">@status.Text</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect T="int"
+                            @bind-Value="_clientModel.Priority"
+                            Label="@L["Priority *"]"
+                            Required="true">
+                    @foreach (var priority in GetPriorityOptions())
+                    {
+                        <MudSelectItem Value="@priority.Value">@priority.Text</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudTextField T="string"
+                              @bind-Value="_clientModel.Industry"
+                              Label="@L["Industry"]" />
+
+                <MudTextField T="string"
+                              @bind-Value="_clientModel.Size"
+                              Label="@L["Company Size"]" />
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudNumericField T="decimal?"
+                                        @bind-Value="_clientModel.AnnualRevenue"
+                                        Label="@L["Annual Revenue"]" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudNumericField T="int?"
+                                        @bind-Value="_clientModel.EmployeeCount"
+                                        Label="@L["Employee Count"]" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudDivider />
+
+                <!-- Additional Information -->
+                <MudText Typo="Typo.subtitle1">@L["Additional Information"]</MudText>
+                <MudTextField T="string"
+                              @bind-Value="_clientModel.Tags"
+                              Label="@L["Tags"]"
+                              HelperText="@L["Separate tags with commas"]" />
+
+                <MudTextField T="string"
+                              @bind-Value="_clientModel.Notes"
+                              Label="@L["Notes"]"
+                              Lines="3" />
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="6">
+                        <MudDatePicker @bind-Date="_clientModel.FirstContactDate"
+                                       Label="@L["First Contact Date"]" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudDatePicker @bind-Date="_clientModel.LastInteractionDate"
+                                       Label="@L["Last Interaction Date"]" />
+                    </MudItem>
+                </MudGrid>
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="Cancel">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary"
+                   Disabled="@(!_isValid || _loading)"
+                   OnClick="Submit">
+            @if (_loading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+            }
+            @(IsEdit ? @L["Update"] : @L["Create"])
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public bool IsEdit { get; set; } = false;
+
+    [Parameter]
+    public ClientDto? Client { get; set; }
+
+    private bool _isOpen = true;
+    private bool _loading = false;
+    private bool _isValid = false;
+    private MudForm? _form;
+    private ClientDto _clientModel = new();
+
+    protected override void OnParametersSet()
+    {
+        if (IsEdit && Client != null)
+        {
+            _clientModel = new ClientDto
+            {
+                Id = Client.Id,
+                Name = Client.Name,
+                TradeName = Client.TradeName,
+                DocumentNumber = Client.DocumentNumber,
+                Email = Client.Email,
+                Phone = Client.Phone,
+                Website = Client.Website,
+                Address = Client.Address,
+                City = Client.City,
+                State = Client.State,
+                PostalCode = Client.PostalCode,
+                Country = Client.Country,
+                Industry = Client.Industry,
+                Size = Client.Size,
+                AnnualRevenue = Client.AnnualRevenue,
+                EmployeeCount = Client.EmployeeCount,
+                Type = Client.Type,
+                Status = Client.Status,
+                Priority = Client.Priority,
+                Notes = Client.Notes,
+                Tags = Client.Tags,
+                FirstContactDate = Client.FirstContactDate,
+                LastInteractionDate = Client.LastInteractionDate
+            };
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (_form == null || !_form.IsValid) return;
+
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            ClientDto? result;
+
+            if (IsEdit)
+            {
+                var success = await ClientServiceProxy.UpdateClientAsync(_clientModel.Id, _clientModel);
+                if (success)
+                {
+                    Snackbar.Add(@L["Client updated successfully"], Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    Snackbar.Add(@L["Failed to update client"], Severity.Error);
+                }
+                return;
+            }
+            else
+            {
+                result = await ClientServiceProxy.CreateClientAsync(_clientModel);
+            }
+
+            if (result != null)
+            {
+                Snackbar.Add(@L["Client created successfully"], Severity.Success);
+                MudDialog.Close(DialogResult.Ok(result));
+            }
+            else
+            {
+                Snackbar.Add(@L["Failed to create client"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(@L["An error occurred: {0}", ex.Message], Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private IEnumerable<(int Value, string Text)> GetClientTypes()
+    {
+        yield return (1, @L["Company"]);
+        yield return (2, @L["Public Figure"]);
+        yield return (3, @L["Government"]);
+        yield return (4, @L["Non Profit"]);
+    }
+
+    private IEnumerable<(int Value, string Text)> GetStatusOptions()
+    {
+        yield return (1, @L["Prospect"]);
+        yield return (2, @L["Active"]);
+        yield return (3, @L["Inactive"]);
+        yield return (4, @L["Churned"]);
+        yield return (5, @L["Blocked"]);
+    }
+
+    private IEnumerable<(int Value, string Text)> GetPriorityOptions()
+    {
+        yield return (1, @L["Low"]);
+        yield return (2, @L["Medium"]);
+        yield return (3, @L["High"]);
+        yield return (4, @L["VIP"]);
+    }
+}

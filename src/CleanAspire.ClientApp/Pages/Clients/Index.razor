@@ -1,0 +1,366 @@
+@page "/clients/index"
+@using CleanAspire.ClientApp.Pages.Clients.Components
+@using CleanAspire.ClientApp.Services.Clients
+@using CleanAspire.ClientApp.Shared
+
+@inject ClientServiceProxy ClientServiceProxy
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>@L["Clients"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <!-- Header -->
+    <MudPaper Class="pa-4 mb-4">
+        <MudStack Row Spacing="0" Justify="Justify.SpaceBetween">
+            <MudStack Row AlignItems="AlignItems.Start">
+                <MudIcon Icon="@Icons.Material.Outlined.Business" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle2">@L["Client Management"]</MudText>
+                    <MudText Typo="Typo.body2">@L["Manage your clients and their information"]</MudText>
+                </MudStack>
+            </MudStack>
+            <MudStack Row Spacing="1">
+                <MudButton Size="Size.Small" OnClick="RefreshData" Disabled="@_loading">
+                    <MudIcon Icon="@Icons.Material.Filled.Refresh" />
+                    <MudText>@L["Refresh"]</MudText>
+                </MudButton>
+                <MudButton Size="Size.Small" OnClick="OpenNewClientDialog">
+                    <MudIcon Icon="@Icons.Material.Filled.Add" />
+                    <MudText>@L["New Client"]</MudText>
+                </MudButton>
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+
+    <!-- Search and Filters -->
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              ValueChanged="@(s => OnSearch(s))"
+                              Value="@_searchTerm"
+                              Label="@L["Search clients..."]"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="int"
+                            @bind-Value="_filterType"
+                            Label="@L["Filter by Type"]"
+                            Clearable="true"
+                            OnValueChanged="OnFilterChanged">
+                    <MudSelectItem Value="0">@L["All Types"]</MudSelectItem>
+                    <MudSelectItem Value="1">@L["Company"]</MudSelectItem>
+                    <MudSelectItem Value="2">@L["Public Figure"]</MudSelectItem>
+                    <MudSelectItem Value="3">@L["Government"]</MudSelectItem>
+                    <MudSelectItem Value="4">@L["Non Profit"]</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="int"
+                            @bind-Value="_filterStatus"
+                            Label="@L["Filter by Status"]"
+                            Clearable="true"
+                            OnValueChanged="OnFilterChanged">
+                    <MudSelectItem Value="0">@L["All Statuses"]</MudSelectItem>
+                    <MudSelectItem Value="1">@L["Prospect"]</MudSelectItem>
+                    <MudSelectItem Value="2">@L["Active"]</MudSelectItem>
+                    <MudSelectItem Value="3">@L["Inactive"]</MudSelectItem>
+                    <MudSelectItem Value="4">@L["Churned"]</MudSelectItem>
+                    <MudSelectItem Value="5">@L["Blocked"]</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Data Grid -->
+    <MudPaper Class="pa-4">
+        @if (_loading)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-8">
+                <MudProgressCircular Indeterminate="true" />
+                <MudText Typo="Typo.body2">@L["Loading clients..."]</MudText>
+            </MudStack>
+        }
+        else if (!_clients.Any())
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-8">
+                <MudIcon Icon="@Icons.Material.Outlined.BusinessCenter" Size="Size.Large" />
+                <MudText Typo="Typo.h6">@L["No clients found"]</MudText>
+                <MudText Typo="Typo.body2">@L["Create your first client to get started"]</MudText>
+                <MudButton Variant="Variant.Outlined" OnClick="OpenNewClientDialog">
+                    <MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-2" />
+                    @L["Create First Client"]
+                </MudButton>
+            </MudStack>
+        }
+        else
+        {
+            <MudDataGrid T="ClientDto"
+                          Dense="true"
+                          Hover="true"
+                          Items="@_clients"
+                          @bind-SelectedItem="_selectedClient"
+                          RowClick="@(e => EditClient(e.Item))">
+                <Columns>
+                    <PropertyColumn Title="@L["Name"]" Property="c => c.DisplayName" />
+                    <PropertyColumn Title="@L["Type"]" Property="c => c.TypeName">
+                        <CellTemplate>
+                            <MudChip Size="Size.Small"
+                                      Color="@GetClientTypeColor(context.Item.Type)">
+                                @context.Item.TypeName
+                            </MudChip>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Title="@L["Status"]" Property="c => c.StatusName">
+                        <CellTemplate>
+                            <MudChip Size="Size.Small"
+                                      Color="@GetStatusColor(context.Item.Status)">
+                                @context.Item.StatusName
+                            </MudChip>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Title="@L["Email"]" Property="c => c.Email" />
+                    <PropertyColumn Title="@L["Phone"]" Property="c => c.Phone" />
+                    <PropertyColumn Title="@L["Contacts"]" Property="c => c.ContactsCount" />
+                    <PropertyColumn Title="@L["Priority"]" Property="c => c.PriorityName">
+                        <CellTemplate>
+                            <MudChip Size="Size.Small"
+                                      Color="@GetPriorityColor(context.Item.Priority)">
+                                @context.Item.PriorityName
+                            </MudChip>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <TemplateColumn>
+                        <HeaderTemplate>@L["Actions"]</HeaderTemplate>
+                        <CellTemplate>
+                            <MudStack Row Spacing="1">
+                                <MudIconButton Size="Size.Small"
+                                              Color="Color.Primary"
+                                              Icon="@Icons.Material.Filled.People"
+                                              Title="@L["View Contacts"]"
+                                              OnClick="() => ViewContacts(context.Item.Id)" />
+                                <MudIconButton Size="Size.Small"
+                                              Color="Color.Info"
+                                              Icon="@Icons.Material.Filled.Edit"
+                                              Title="@L["Edit"]"
+                                              OnClick="() => EditClient(context.Item)" />
+                                <MudIconButton Size="Size.Small"
+                                              Color="Color.Error"
+                                              Icon="@Icons.Material.Filled.Delete"
+                                              Title="@L["Delete"]"
+                                              OnClick="() => DeleteClient(context.Item)" />
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private bool _loading = false;
+    private string _searchTerm = string.Empty;
+    private int _filterType = 0;
+    private int _filterStatus = 0;
+    private ClientDto? _selectedClient;
+    private List<ClientDto> _clients = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClients();
+    }
+
+    private async Task LoadClients()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ClientServiceProxy.GetClientsWithPaginationAsync(1, 1000);
+            _clients = result?.Items?.ToList() ?? new List<ClientDto>();
+
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(@L["Error loading clients: {0}", ex.Message], Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        var filtered = _clients;
+
+        // Search filter
+        if (!string.IsNullOrEmpty(_searchTerm))
+        {
+            filtered = filtered.Where(c =>
+                c.Name.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                c.TradeName?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
+                c.Email?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
+                c.Phone?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) == true
+            ).ToList();
+        }
+
+        // Type filter
+        if (_filterType > 0)
+        {
+            filtered = filtered.Where(c => c.Type == _filterType).ToList();
+        }
+
+        // Status filter
+        if (_filterStatus > 0)
+        {
+            filtered = filtered.Where(c => c.Status == _filterStatus).ToList();
+        }
+
+        _clients = filtered.ToList();
+    }
+
+    private async Task OnFilterChanged()
+    {
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private async Task OnSearch(string text)
+    {
+        _searchTerm = text;
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadClients();
+        Snackbar.Add(@L["Data refreshed"], Severity.Success);
+    }
+
+    private async Task OpenNewClientDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["IsEdit"] = false
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Large,
+                    };
+
+        var dialog = DialogService.Show<NewClientDialog>(@L["New Client"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadClients();
+        }
+    }
+
+    private async Task EditClient(ClientDto client)
+    {
+        var parameters = new DialogParameters
+        {
+            ["IsEdit"] = true,
+            ["Client"] = client
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Large,
+                    };
+
+        var dialog = DialogService.Show<NewClientDialog>(@L["Edit Client"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadClients();
+        }
+    }
+
+    private void ViewContacts(string clientId)
+    {
+        // Navigate to contacts page filtered by client
+        Navigation.NavigateTo($"/contacts/index?clientId={clientId}");
+    }
+
+    private async Task DeleteClient(ClientDto client)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Message"] = string.Format(@L["Are you sure you want to delete the client '{0}'? This action cannot be undone."], client.DisplayName)
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+                    };
+
+        var dialog = DialogService.Show<DeleteConfirmationDialog>(@L["Delete Client"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var success = await ClientServiceProxy.DeleteClientAsync(client.Id);
+            if (success)
+            {
+                Snackbar.Add(@L["Client deleted successfully"], Severity.Success);
+                await LoadClients();
+            }
+            else
+            {
+                Snackbar.Add(@L["Failed to delete client"], Severity.Error);
+            }
+        }
+    }
+
+    private Color GetClientTypeColor(int type)
+    {
+        return type switch
+        {
+            1 => Color.Primary,    // Company
+            2 => Color.Secondary,  // Public Figure
+            3 => Color.Info,       // Government
+            4 => Color.Warning,    // Non Profit
+            _ => Color.Default
+        };
+    }
+
+    private Color GetStatusColor(int status)
+    {
+        return status switch
+        {
+            1 => Color.Warning,    // Prospect
+            2 => Color.Success,    // Active
+            3 => Color.Default,    // Inactive
+            4 => Color.Error,      // Churned
+            5 => Color.Dark,       // Blocked
+            _ => Color.Default
+        };
+    }
+
+    private Color GetPriorityColor(int priority)
+    {
+        return priority switch
+        {
+            1 => Color.Info,       // Low
+            2 => Color.Warning,    // Medium
+            3 => Color.Error,      // High
+            4 => Color.Secondary,  // VIP
+            _ => Color.Default
+        };
+    }
+}

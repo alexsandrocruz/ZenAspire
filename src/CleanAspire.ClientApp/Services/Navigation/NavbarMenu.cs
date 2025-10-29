@@ -103,6 +103,27 @@ public static class NavbarMenu
                 },
                 new MenuItem
                 {
+                    Label = "CRM",
+                    SubItems = new List<MenuItem>
+                    {
+                        new MenuItem
+                        {
+                            Label = "Clients",
+                            Href = "/clients/index",
+                            Status = PageStatus.New,
+                            Description = "Manage clients and their information."
+                        },
+                        new MenuItem
+                        {
+                            Label = "Contacts",
+                            Href = "/contacts/index",
+                            Status = PageStatus.New,
+                            Description = "Manage contacts and their relationships with clients."
+                        }
+                    }
+                },
+                new MenuItem
+                {
                     Label = "Orders",
                     SubItems = new List<MenuItem>
                     {

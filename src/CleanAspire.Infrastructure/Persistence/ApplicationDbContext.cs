@@ -22,7 +22,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     {
     }
 
-    public DbSet<Customer> Customers { get; set; }
+    /// <summary>
+    /// Gets or sets the Clients DbSet.
+    /// </summary>
+    public DbSet<Client> Clients { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Contacts DbSet.
+    /// </summary>
+    public DbSet<Contact> Contacts { get; set; }
 
     /// <summary>
     /// Gets or sets the Tenants DbSet.

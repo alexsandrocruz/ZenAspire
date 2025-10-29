@@ -5,8 +5,16 @@
 /// </summary>
 public interface IApplicationDbContext
 {
+    /// <summary>
+    /// Gets or sets the Clients DbSet.
+    /// </summary>
+    DbSet<Client> Clients { get; set; }
 
-    DbSet<Customer> Customers { get; set; }
+    /// <summary>
+    /// Gets or sets the Contacts DbSet.
+    /// </summary>
+    DbSet<Contact> Contacts { get; set; }
+
     /// <summary>
     /// Gets or sets the Products DbSet.
     /// </summary>

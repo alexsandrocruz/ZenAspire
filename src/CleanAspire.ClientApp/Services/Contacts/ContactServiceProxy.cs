@@ -23,29 +23,33 @@ public class ContactServiceProxy
     {
         try
         {
-            var queryString = $"pageNumber={pageNumber}&pageSize={pageSize}";
-            if (!string.IsNullOrEmpty(searchTerm))
+            var request = new
             {
-                queryString += $"&searchTerm={Uri.EscapeDataString(searchTerm)}";
-            }
-            if (!string.IsNullOrEmpty(clientId))
-            {
-                queryString += $"&clientId={Uri.EscapeDataString(clientId)}";
-            }
+                Keywords = searchTerm ?? string.Empty,
+                PageNumber = pageNumber - 1, // API uses zero-based indexing (0 = first page)
+                PageSize = pageSize,
+                OrderBy = "FirstName",
+                SortDirection = "Ascending",
+                FilterByClientId = clientId
+            };
 
-            var response = await _httpClient.GetAsync($"/api/contacts/pagination?{queryString}");
+            var response = await _httpClient.PostAsJsonAsync("/api/contacts/pagination", request);
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"Error getting paginated contacts: {response.StatusCode}");
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ Error getting paginated contacts:");
+                Console.WriteLine($"   Status: {response.StatusCode} ({(int)response.StatusCode})");
+                Console.WriteLine($"   Error: {errorContent}");
                 return null;
             }
 
             var result = await response.Content.ReadFromJsonAsync<PaginatedResult<ContactDto>>();
+            Console.WriteLine($"✅ Got {result?.Items?.Count() ?? 0} contacts successfully");
             return result;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error getting paginated contacts: {ex.Message}");
+            Console.WriteLine($"❌ Error getting paginated contacts: {ex.Message}");
             return null;
         }
     }
@@ -105,19 +109,54 @@ public class ContactServiceProxy
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("/api/contacts", contactDto);
+            Console.WriteLine($"📝 Creating contact: {contactDto.FirstName} {contactDto.LastName}");
+            Console.WriteLine($"   Email: {contactDto.Email}");
+            Console.WriteLine($"   ClientId: {contactDto.ClientId ?? "(null)"}");
+
+            // Create request object matching CreateContactCommand structure
+            var request = new
+            {
+                contactDto.FirstName,
+                contactDto.LastName,
+                contactDto.Email,
+                contactDto.Phone,
+                contactDto.MobilePhone,
+                contactDto.JobTitle,
+                contactDto.Department,
+                contactDto.Address,
+                contactDto.City,
+                contactDto.State,
+                contactDto.PostalCode,
+                contactDto.Notes,
+                ContactTags = contactDto.Tags, // Map Tags to ContactTags
+                Type = contactDto.Type,
+                Status = contactDto.Status,
+                contactDto.IsMainContact,
+                contactDto.IsDecisionMaker,
+                contactDto.BirthDate,
+                contactDto.ClientId
+            };
+
+            Console.WriteLine($"   Request: {System.Text.Json.JsonSerializer.Serialize(request)}");
+
+            var response = await _httpClient.PostAsJsonAsync("/api/contacts", request);
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"Error creating contact: {response.StatusCode}");
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ Error creating contact:");
+                Console.WriteLine($"   Status: {response.StatusCode} ({(int)response.StatusCode})");
+                Console.WriteLine($"   Error: {errorContent}");
                 return null;
             }
 
             var result = await response.Content.ReadFromJsonAsync<ContactDto>();
+            Console.WriteLine($"✅ Contact created successfully with ID: {result?.Id}");
             return result;
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error creating contact: {ex.Message}");
+            Console.WriteLine($"❌ Exception creating contact: {ex.Message}");
+            Console.WriteLine($"   Stack: {ex.StackTrace}");
             return null;
         }
     }

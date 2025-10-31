@@ -1,4 +1,5 @@
 @inject ContactServiceProxy ContactServiceProxy
+@inject ClientServiceProxy ClientServiceProxy
 @inject ISnackbar Snackbar
 
 <MudDialog @bind-IsOpen="@_isOpen"
@@ -16,6 +17,27 @@
             <MudStack Spacing="2">
                 <!-- Basic Information -->
                 <MudText Typo="Typo.subtitle1">@L["Basic Information"]</MudText>
+
+                <!-- Client Selection -->
+                <MudSelect T="string"
+                            @bind-Value="_contactModel.ClientId"
+                            Label="@L["Client *"]"
+                            Required="true"
+                            RequiredError="@L["Client is required"]"
+                            Disabled="@_loadingClients">
+                    @if (_loadingClients)
+                    {
+                        <MudSelectItem Value="@string.Empty">@L["Loading clients..."]</MudSelectItem>
+                    }
+                    else
+                    {
+                        @foreach (var client in _clients)
+                        {
+                            <MudSelectItem Value="@client.Id">@client.DisplayName</MudSelectItem>
+                        }
+                    }
+                </MudSelect>
+
                 <MudGrid Spacing="2">
                     <MudItem xs="12" md="6">
                         <MudTextField T="string"
@@ -35,8 +57,10 @@
 
                 <MudTextField T="string"
                               @bind-Value="_contactModel.Email"
-                              Label="@L["Email"]"
-                              Type="InputType.Email" />
+                              Label="@L["Email *"]"
+                              Type="InputType.Email"
+                              Required="true"
+                              RequiredError="@L["Email is required"]" />
 
                 <MudGrid Spacing="2">
                     <MudItem xs="12" md="6">
@@ -170,11 +194,43 @@
     [Parameter]
     public ContactDto? Contact { get; set; }
 
+    [Parameter]
+    public string? ClientId { get; set; }
+
     private bool _isOpen = true;
     private bool _loading = false;
+    private bool _loadingClients = false;
     private bool _isValid = false;
     private MudForm? _form;
     private ContactDto _contactModel = new();
+    private List<ClientDto> _clients = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClients();
+    }
+
+    private async Task LoadClients()
+    {
+        _loadingClients = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ClientServiceProxy.GetClientsWithPaginationAsync(1, 1000);
+            _clients = result?.Items?.ToList() ?? new List<ClientDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading clients for contact dialog: {ex.Message}");
+            Snackbar.Add(@L["Error loading clients"], Severity.Error);
+        }
+        finally
+        {
+            _loadingClients = false;
+            StateHasChanged();
+        }
+    }
 
     protected override void OnParametersSet()
     {
@@ -212,6 +268,12 @@
             // For new contacts, set default values
             _contactModel.Type = 1; // Lead
             _contactModel.Status = 1; // Active
+
+            // Set ClientId if provided as parameter
+            if (!string.IsNullOrEmpty(ClientId))
+            {
+                _contactModel.ClientId = ClientId;
+            }
         }
     }
 

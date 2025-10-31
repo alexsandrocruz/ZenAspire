@@ -105,7 +105,7 @@ public class ContactsWithPaginationQueryHandler : IRequestHandler<ContactsWithPa
                 pageSize: request.PageSize,
                 mapperFunc: c => new ContactDto
                 {
-                    Id = c.Id.ToString(),
+                    Id = c.Id,
                     FirstName = c.FirstName,
                     LastName = c.LastName,
                     Email = c.Email,
@@ -127,7 +127,7 @@ public class ContactsWithPaginationQueryHandler : IRequestHandler<ContactsWithPa
                     IsDecisionMaker = c.IsDecisionMaker,
                     BirthDate = c.BirthDate,
                     LastContactDate = c.LastContactDate,
-                    ClientId = c.ClientId.ToString(),
+                    ClientId = c.ClientId,
                     ClientName = c.Client.Name,
                     ClientDisplayName = c.Client.DisplayName,
                     Created = c.Created,

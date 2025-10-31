@@ -91,7 +91,7 @@ public class ClientsWithPaginationQueryHandler : IRequestHandler<ClientsWithPagi
                 pageSize: request.PageSize,
                 mapperFunc: c => new ClientDto
                 {
-                    Id = c.Id.ToString(),
+                    Id = c.Id,
                     Name = c.Name,
                     TradeName = c.TradeName,
                     DocumentNumber = c.DocumentNumber,

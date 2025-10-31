@@ -40,7 +40,7 @@ public class GetAllClientsQueryHandler : IRequestHandler<GetAllClientsQuery, Lis
             .OrderBy(c => c.Name)
             .Select(c => new ClientDto
             {
-                Id = c.Id.ToString(),
+                Id = c.Id,
                 Name = c.Name,
                 TradeName = c.TradeName,
                 DocumentNumber = c.DocumentNumber,

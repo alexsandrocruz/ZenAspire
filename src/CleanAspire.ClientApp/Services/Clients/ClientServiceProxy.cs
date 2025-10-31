@@ -23,20 +23,28 @@ public class ClientServiceProxy
     {
         try
         {
-            var queryString = $"pageNumber={pageNumber}&pageSize={pageSize}";
-            if (!string.IsNullOrEmpty(searchTerm))
+            var request = new
             {
-                queryString += $"&searchTerm={Uri.EscapeDataString(searchTerm)}";
-            }
+                Keywords = searchTerm ?? string.Empty,
+                PageNumber = pageNumber - 1, // API uses zero-based indexing (0 = first page)
+                PageSize = pageSize,
+                OrderBy = "Name",
+                SortDirection = "Ascending"
+            };
 
-            var response = await _httpClient.GetAsync($"/api/clients/pagination?{queryString}");
+            var response = await _httpClient.PostAsJsonAsync("/api/clients/pagination", request);
             if (!response.IsSuccessStatusCode)
             {
-                Console.WriteLine($"Error getting paginated clients: {response.StatusCode}");
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Console.WriteLine($"❌ Error getting paginated clients:");
+                Console.WriteLine($"   Status: {response.StatusCode} ({(int)response.StatusCode})");
+                Console.WriteLine($"   URL: {response.RequestMessage?.RequestUri}");
+                Console.WriteLine($"   Error: {errorContent}");
                 return null;
             }
 
             var result = await response.Content.ReadFromJsonAsync<PaginatedResult<ClientDto>>();
+            Console.WriteLine($"✅ Got {result?.Items?.Count() ?? 0} clients successfully");
             return result;
         }
         catch (Exception ex)

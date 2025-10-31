@@ -47,7 +47,7 @@ public class CreateClientSimpleCommandHandler : IRequestHandler<CreateClientComm
 
         return new ClientDto
         {
-            Id = client.Id.ToString(),
+            Id = client.Id,
             Name = client.Name,
             Email = client.Email,
             Type = (int)client.Type,

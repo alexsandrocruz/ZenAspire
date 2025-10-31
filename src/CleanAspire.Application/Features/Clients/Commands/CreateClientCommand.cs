@@ -94,7 +94,7 @@ public class CreateClientCommandHandler : IRequestHandler<CreateClientCommand, C
 
         return new ClientDto
         {
-            Id = client.Id.ToString(),
+            Id = client.Id,
             Name = client.Name,
             TradeName = client.TradeName,
             Email = client.Email,

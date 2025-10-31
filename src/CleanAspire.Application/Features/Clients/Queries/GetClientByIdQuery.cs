@@ -40,7 +40,7 @@ public class GetClientByIdQueryHandler : IRequestHandler<GetClientByIdQuery, Cli
             .Where(c => c.Id == request.Id)
             .Select(c => new ClientDto
             {
-                Id = c.Id.ToString(),
+                Id = c.Id,
                 Name = c.Name,
                 TradeName = c.TradeName,
                 DocumentNumber = c.DocumentNumber,

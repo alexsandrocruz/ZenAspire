@@ -60,6 +60,11 @@ public class CreateContactCommandHandler : IRequestHandler<CreateContactCommand,
     public async ValueTask<ContactDto> Handle(CreateContactCommand request, CancellationToken cancellationToken)
     {
         // Verify that the client exists
+        if (string.IsNullOrWhiteSpace(request.ClientId))
+        {
+            throw new ArgumentException("Client ID cannot be null or empty.", nameof(request.ClientId));
+        }
+
         var clientExists = await _context.Clients
             .AnyAsync(c => c.Id == request.ClientId, cancellationToken);
 
@@ -110,7 +115,7 @@ public class CreateContactCommandHandler : IRequestHandler<CreateContactCommand,
 
         return new ContactDto
         {
-            Id = contact.Id.ToString(),
+            Id = contact.Id,
             FirstName = contact.FirstName,
             LastName = contact.LastName,
             Email = contact.Email,
@@ -122,7 +127,9 @@ public class CreateContactCommandHandler : IRequestHandler<CreateContactCommand,
             StatusName = contact.Status.ToString(),
             IsMainContact = contact.IsMainContact,
             IsDecisionMaker = contact.IsDecisionMaker,
-            ClientId = contact.ClientId.ToString(),
+            ClientId = contact.ClientId,
+            ClientName = client?.Name ?? string.Empty,
+            ClientDisplayName = client?.DisplayName ?? string.Empty,
             Created = contact.Created,
             CreatedBy = contact.CreatedBy
         };

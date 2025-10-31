@@ -807,6 +807,431 @@ src/
 
 ---
 
+## 🐛 Problemas Comuns e Soluções
+
+Esta seção documenta problemas reais encontrados durante a implementação dos CRUDs de **Client** e **Contact**, com suas causas e soluções.
+
+### ❌ Problema 1: CORS Error - Mixed Content (HTTP/HTTPS)
+
+**Erro Observado**:
+
+```text
+Access to fetch at 'http://localhost:5519/account/profile' from origin 'https://localhost:7114'
+has been blocked by CORS policy: No 'Access-Control-Allow-Origin' header is present
+```
+
+**Causa**:
+O ClientApp estava configurado para acessar a API via HTTP (`http://localhost:5519`) mas a API estava rodando em HTTPS (`https://localhost:7341`), causando bloqueio por política de CORS.
+
+**Solução**:
+Corrigir a URL base no arquivo `appsettings.Development.json` do ClientApp:
+
+```json
+// ❌ ERRADO
+{
+  "ClientAppSettings": {
+    "ServiceBaseUrl": "http://localhost:5519"
+  }
+}
+
+// ✅ CORRETO
+{
+  "ClientAppSettings": {
+    "ServiceBaseUrl": "https://localhost:7341"
+  }
+}
+```
+
+**Arquivo**: `src/CleanAspire.ClientApp/wwwroot/appsettings.Development.json`
+
+---
+
+### ❌ Problema 2: PageNumber Zero-Based - Paginação Retorna 0 Resultados
+
+**Erro Observado**:
+```
+✅ Got 0 clients successfully
+```
+Dados existem no banco, mas a paginação retorna 0 resultados.
+
+**Causa**:
+O sistema de paginação usa **zero-based indexing** (página 0 = primeira página), mas o ServiceProxy estava enviando `PageNumber = 1`, causando:
+```csharp
+Skip(1 * 1000) = Skip(1000) // Pula os primeiros 1000 registros!
+```
+
+**Solução**:
+Subtrair 1 do pageNumber ao fazer a requisição:
+
+```csharp
+// ❌ ERRADO
+var request = new
+{
+    PageNumber = pageNumber, // Se pageNumber=1, pula 1000 registros!
+    PageSize = pageSize
+};
+
+// ✅ CORRETO
+var request = new
+{
+    PageNumber = pageNumber - 1, // API uses zero-based indexing (0 = first page)
+    PageSize = pageSize
+};
+```
+
+**Arquivos Corrigidos**:
+- `src/CleanAspire.ClientApp/Services/Clients/ClientServiceProxy.cs`
+- `src/CleanAspire.ClientApp/Services/Contacts/ContactServiceProxy.cs`
+
+---
+
+### ❌ Problema 3: Método HTTP Incorreto - GET vs POST para Paginação
+
+**Erro Observado**:
+```
+Error 404: Not Found
+```
+
+**Causa**:
+O ServiceProxy estava usando `GetAsync` com query string, mas o endpoint da API está configurado como `POST`:
+
+```csharp
+// Na API (ClientEndpointRegistrar.cs)
+group.MapPost("/pagination", ...) // Endpoint é POST!
+```
+
+**Solução**:
+Usar `PostAsJsonAsync` ao invés de `GetAsync`:
+
+```csharp
+// ❌ ERRADO
+var queryString = $"pageNumber={pageNumber}&pageSize={pageSize}";
+var response = await _httpClient.GetAsync($"/api/clients/pagination?{queryString}");
+
+// ✅ CORRETO
+var request = new
+{
+    Keywords = searchTerm ?? string.Empty,
+    PageNumber = pageNumber - 1,
+    PageSize = pageSize,
+    OrderBy = "Name",
+    SortDirection = "Ascending"
+};
+var response = await _httpClient.PostAsJsonAsync("/api/clients/pagination", request);
+```
+
+**Lição Aprendida**: Sempre verificar o verbo HTTP do endpoint na API antes de implementar o ServiceProxy.
+
+---
+
+### ❌ Problema 4: Id.ToString() Desnecessário - String para String
+
+**Erro Observado**:
+Compilação funcionando, mas conversão desnecessária que pode causar problemas.
+
+**Causa**:
+As entidades usam `Id` do tipo `string`, mas os handlers estavam fazendo `.ToString()`:
+
+```csharp
+// Entidade (BaseEntity.cs)
+public virtual string Id { get; set; } = Guid.CreateVersion7().ToString();
+
+// Handler - conversão desnecessária
+Id = client.Id.ToString(), // ❌ string.ToString() é redundante
+```
+
+**Solução**:
+Remover todas as chamadas `.ToString()` em propriedades que já são strings:
+
+```csharp
+// ❌ ERRADO
+return new ClientDto
+{
+    Id = client.Id.ToString(), // Desnecessário!
+    ClientId = contact.ClientId.ToString() // Desnecessário!
+};
+
+// ✅ CORRETO
+return new ClientDto
+{
+    Id = client.Id, // Já é string!
+    ClientId = contact.ClientId // Já é string!
+};
+```
+
+**Arquivos Corrigidos** (12 arquivos):
+- `CreateClientCommand.cs`
+- `CreateContactCommand.cs`
+- `GetAllClientsQuery.cs`
+- `GetClientByIdQuery.cs`
+- `ClientsWithPaginationQuery.cs`
+- `GetAllContactsQuery.cs`
+- `GetContactByIdQuery.cs`
+- `GetContactsByClientIdQuery.cs`
+- `ContactsWithPaginationQuery.cs`
+- E outros...
+
+---
+
+### ❌ Problema 5: Validator Faltando - CreateContactCommand
+
+**Erro Observado**:
+```
+Error 422: Unprocessable Entity (Validation Error)
+```
+Falha silenciosa sem mensagem clara de erro.
+
+**Causa**:
+O `CreateContactCommand` não tinha um validator correspondente, causando falhas de validação sem feedback adequado.
+
+**Solução**:
+Criar o validator seguindo o padrão FluentValidation:
+
+```csharp
+// CreateContactCommandValidator.cs
+public class CreateContactCommandValidator : AbstractValidator<CreateContactCommand>
+{
+    public CreateContactCommandValidator()
+    {
+        RuleFor(command => command.FirstName)
+            .NotEmpty().WithMessage("First name is required.")
+            .MaximumLength(100).WithMessage("First name must not exceed 100 characters.");
+
+        RuleFor(command => command.LastName)
+            .NotEmpty().WithMessage("Last name is required.")
+            .MaximumLength(100).WithMessage("Last name must not exceed 100 characters.");
+
+        RuleFor(command => command.Email)
+            .NotEmpty().WithMessage("Email is required.")
+            .EmailAddress().WithMessage("Invalid email format.")
+            .MaximumLength(150).WithMessage("Email must not exceed 150 characters.");
+
+        RuleFor(command => command.ClientId)
+            .NotEmpty().WithMessage("Client ID is required.");
+    }
+}
+```
+
+**Lição Aprendida**: Sempre criar validators para commands que implementam `IRequiresValidation`.
+
+---
+
+### ❌ Problema 6: ClientId Faltando no Formulário de Contact
+
+**Erro Observado**:
+```
+Error 422: Validation failed - ClientId is required
+```
+
+**Causa**:
+O formulário `NewContactDialog` não tinha um campo para selecionar o Client, então o `ClientId` era enviado como `null` ou vazio.
+
+**Solução 1**: Adicionar campo de seleção de Client no formulário:
+
+```razor
+<!-- NewContactDialog.razor -->
+<MudSelect T="string"
+            @bind-Value="_contactModel.ClientId"
+            Label="@L["Client *"]"
+            Required="true"
+            RequiredError="@L["Client is required"]">
+    @foreach (var client in _clients)
+    {
+        <MudSelectItem Value="@client.Id">@client.DisplayName</MudSelectItem>
+    }
+</MudSelect>
+```
+
+**Solução 2**: Carregar lista de clientes no OnInitializedAsync:
+
+```csharp
+protected override async Task OnInitializedAsync()
+{
+    await LoadClients();
+}
+
+private async Task LoadClients()
+{
+    var result = await ClientServiceProxy.GetClientsWithPaginationAsync(1, 1000);
+    _clients = result?.Items?.ToList() ?? new List<ClientDto>();
+}
+```
+
+**Solução 3**: Adicionar parâmetro ClientId opcional para pré-selecionar:
+
+```csharp
+[Parameter]
+public string? ClientId { get; set; }
+
+// No OnParametersSet
+if (!string.IsNullOrEmpty(ClientId))
+{
+    _contactModel.ClientId = ClientId;
+}
+```
+
+---
+
+### ❌ Problema 7: Campo Email Não Obrigatório no Formulário
+
+**Erro Observado**:
+```
+Error 422: Email is required
+```
+Formulário permitia submissão sem email, mas o validator da API exigia.
+
+**Causa**:
+O campo Email no formulário não estava marcado como `Required="true"`, permitindo envio de valores vazios.
+
+**Solução**:
+Adicionar validação no campo:
+
+```razor
+<!-- ❌ ERRADO -->
+<MudTextField T="string"
+              @bind-Value="_contactModel.Email"
+              Label="@L["Email"]"
+              Type="InputType.Email" />
+
+<!-- ✅ CORRETO -->
+<MudTextField T="string"
+              @bind-Value="_contactModel.Email"
+              Label="@L["Email *"]"
+              Type="InputType.Email"
+              Required="true"
+              RequiredError="@L["Email is required"]" />
+```
+
+**Lição Aprendida**: Campos obrigatórios na API devem ser obrigatórios no formulário também. Use o asterisco (*) no label para indicar.
+
+---
+
+### ❌ Problema 8: DTO vs Command Mismatch - Propriedades Incompatíveis
+
+**Erro Observado**:
+```
+Error 422: Validation failed
+```
+
+**Causa**:
+O `ContactDto` estava sendo enviado diretamente para a API, mas ele tinha propriedades diferentes do `CreateContactCommand`:
+
+- ContactDto usa `Tags` → CreateContactCommand usa `ContactTags`
+- ContactDto tem propriedades extras (Id, ClientName, ClientDisplayName, Created, etc.) que não existem no Command
+
+**Solução**:
+Criar um objeto de request anônimo que mapeia corretamente as propriedades:
+
+```csharp
+// ❌ ERRADO - Envia DTO diretamente
+var response = await _httpClient.PostAsJsonAsync("/api/contacts", contactDto);
+
+// ✅ CORRETO - Mapeia para estrutura do Command
+var request = new
+{
+    contactDto.FirstName,
+    contactDto.LastName,
+    contactDto.Email,
+    contactDto.Phone,
+    contactDto.MobilePhone,
+    contactDto.JobTitle,
+    contactDto.Department,
+    contactDto.Address,
+    contactDto.City,
+    contactDto.State,
+    contactDto.PostalCode,
+    contactDto.Notes,
+    ContactTags = contactDto.Tags, // Mapear Tags → ContactTags
+    Type = contactDto.Type,
+    Status = contactDto.Status,
+    contactDto.IsMainContact,
+    contactDto.IsDecisionMaker,
+    contactDto.BirthDate,
+    contactDto.ClientId
+};
+var response = await _httpClient.PostAsJsonAsync("/api/contacts", request);
+```
+
+**Lição Aprendida**:
+- DTOs são para leitura (responses)
+- Commands são para escrita (requests)
+- Sempre mapear corretamente entre eles no ServiceProxy
+
+---
+
+### ❌ Problema 9: Autenticação Bloqueando Endpoints em Desenvolvimento
+
+**Erro Observado**:
+```
+Error 401: Unauthorized
+```
+
+**Causa**:
+Endpoints estavam configurados com `.RequireAuthorization()` mas durante desenvolvimento inicial não havia autenticação configurada.
+
+**Solução Temporária** (apenas para desenvolvimento):
+Comentar temporariamente o RequireAuthorization:
+
+```csharp
+// ClientEndpointRegistrar.cs
+public void RegisterRoutes(IEndpointRouteBuilder routes)
+{
+    var group = routes.MapGroup("/api/clients")
+        .WithTags("clients");
+        // .RequireAuthorization(); // TODO: Re-enable after testing
+}
+```
+
+**⚠️ IMPORTANTE**: Reativar autenticação antes de deploy em produção!
+
+**Solução Definitiva**:
+Implementar autenticação correta com cookies/JWT no cliente.
+
+---
+
+### ✅ Checklist de Validação Pós-Implementação
+
+Use esta checklist para evitar os problemas acima:
+
+- [ ] **URLs configuradas corretamente** (HTTPS, não HTTP)
+- [ ] **PageNumber zero-based** nos ServiceProxies (pageNumber - 1)
+- [ ] **Método HTTP correto** (POST para paginação, não GET)
+- [ ] **Sem `.ToString()` desnecessário** em IDs que já são string
+- [ ] **Validator criado** para todos os Commands que requerem validação
+- [ ] **Campos obrigatórios na API** também são obrigatórios no formulário
+- [ ] **ClientId/Foreign Keys** têm seleção no formulário
+- [ ] **Mapeamento correto** entre DTO e Command (propriedades compatíveis)
+- [ ] **Email com validação Required** se obrigatório na API
+- [ ] **Autenticação configurada** (ou desabilitada temporariamente com TODO)
+- [ ] **Logging adequado** no ServiceProxy para debug
+- [ ] **Testes manuais** de todos os endpoints antes do frontend
+
+---
+
+### 🔍 Debug Tips
+
+**1. Console do Navegador (F12)**:
+Sempre verifique o console para ver:
+- Erros de requisição HTTP (status code)
+- Logs do ServiceProxy
+- Erros de JavaScript/Blazor
+
+**2. Scalar/Swagger** (`https://localhost:7341/scalar/v1`):
+Teste endpoints diretamente antes de implementar o frontend.
+
+**3. Logs do Aspire Dashboard**:
+Monitore as requisições e respostas HTTP em tempo real.
+
+**4. Adicione Logging Detalhado nos ServiceProxies**:
+```csharp
+Console.WriteLine($"📝 Creating {entity}: {entity.Name}");
+Console.WriteLine($"   Request: {System.Text.Json.JsonSerializer.Serialize(request)}");
+// ... fazer requisição ...
+Console.WriteLine($"✅ {Entity} created successfully with ID: {result?.Id}");
+```
+
+---
+
 ## ⚠️ Dicas Importantes
 
 1. **Nomenclatura**: Seja consistente com singular/plural
@@ -816,6 +1241,10 @@ src/
 5. **Error Handling**: Trate erros adequadamente no frontend
 6. **Testes**: Compile frequentemente para detectar erros cedo
 7. **Scalar**: Use para testar API antes do frontend
+8. **PageNumber Zero-Based**: Sempre subtrair 1 no ServiceProxy
+9. **HTTP Methods**: POST para paginação, não GET
+10. **Required Fields**: Sincronizar entre API validators e formulários
+11. **DTO vs Command**: Mapear corretamente as propriedades
 
 ---
 
@@ -827,4 +1256,21 @@ Seguindo este guia passo-a-passo, você terá um sistema CRUD completo e funcion
 
 ---
 
-Guia baseado na implementação prática do Customer CRUD - outubro 2024
+## 📅 Histórico de Atualizações
+
+- **Outubro 2024**: Versão inicial baseada na implementação do Customer CRUD
+- **Outubro 2024**: Adicionada seção "🐛 Problemas Comuns e Soluções" com 9 problemas documentados e resolvidos durante a implementação dos CRUDs de Client e Contact, incluindo:
+  - CORS errors (HTTP/HTTPS mismatch)
+  - PageNumber zero-based indexing
+  - Método HTTP incorreto (GET vs POST)
+  - Conversões desnecessárias (Id.ToString())
+  - Validators faltando
+  - Foreign keys não mapeadas no frontend
+  - DTO vs Command mismatch
+  - Checklist de validação pós-implementação
+  - Debug tips e logging
+
+---
+
+**Mantido por**: Equipe de Desenvolvimento ZenAspire
+**Última atualização**: 31 de Outubro de 2025

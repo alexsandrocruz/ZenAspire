@@ -11,6 +11,7 @@ using CleanAspire.ClientApp.Services.Products;
 using CleanAspire.ClientApp.Services.Customers;
 using CleanAspire.ClientApp.Services.Clients;
 using CleanAspire.ClientApp.Services.Contacts;
+using CleanAspire.ClientApp.Services.Activities;
 using CleanAspire.ClientApp.Services.PushNotifications;
 using CleanAspire.ClientApp.Services.UserPreferences;
 using Microsoft.AspNetCore.Components.Authorization;
@@ -87,6 +88,12 @@ public static class DependencyInjection
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
             var httpClient = httpClientFactory.CreateClient("apiservice");
             return new ContactServiceProxy(httpClient);
+        });
+        services.AddScoped<ActivityServiceProxy>(sp =>
+        {
+            var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();
+            var httpClient = httpClientFactory.CreateClient("apiservice");
+            return new ActivityServiceProxy(httpClient);
         });
 
         services.AddScoped<OfflineSyncService>();

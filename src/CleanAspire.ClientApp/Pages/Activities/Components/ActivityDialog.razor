@@ -124,18 +124,19 @@
                 <!-- Regarding Type and ID -->
                 <MudItem xs="12" md="6">
                     <MudSelect T="RegardingType?"
-                               @bind-Value="_model.RegardingType"
+                               Value="_model.RegardingType"
+                               ValueChanged="@((RegardingType? val) => _model.RegardingType = val)"
                                Label="Regarding Type"
                                Clearable="true"
                                Variant="Variant.Outlined">
-                        <MudSelectItem Value="@((RegardingType?)null)">None</MudSelectItem>
-                        <MudSelectItem Value="@RegardingType.Client">Client</MudSelectItem>
-                        <MudSelectItem Value="@RegardingType.Contact">Contact</MudSelectItem>
-                        <MudSelectItem Value="@RegardingType.Opportunity">Opportunity</MudSelectItem>
-                        <MudSelectItem Value="@RegardingType.Case">Case</MudSelectItem>
-                        <MudSelectItem Value="@RegardingType.Lead">Lead</MudSelectItem>
-                        <MudSelectItem Value="@RegardingType.Campaign">Campaign</MudSelectItem>
-                        <MudSelectItem Value="@RegardingType.Project">Project</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)null)">None</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Client)">Client</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Contact)">Contact</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Opportunity)">Opportunity</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Case)">Case</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Lead)">Lead</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Campaign)">Campaign</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Project)">Project</MudSelectItem>
                     </MudSelect>
                 </MudItem>
 
@@ -263,9 +264,33 @@
         {
             // Update dates from date pickers
             if (_startDate.HasValue)
-                _model.Start = _startDate.Value;
+            {
+                // Combine date with current time if no time component
+                var startDate = _startDate.Value;
+                if (startDate.TimeOfDay == TimeSpan.Zero)
+                {
+                    // If only date is set (time is 00:00), use current time
+                    startDate = startDate.Date.Add(DateTime.Now.TimeOfDay);
+                }
+                _model.Start = startDate;
+            }
 
-            _model.Due = _dueDate;
+            // For due date, if it's the same day as start, add time offset
+            if (_dueDate.HasValue)
+            {
+                var dueDate = _dueDate.Value;
+                if (dueDate.TimeOfDay == TimeSpan.Zero)
+                {
+                    // If only date is set, add 1 hour to ensure it's after start
+                    dueDate = dueDate.Date.Add(_model.Start.TimeOfDay).AddHours(1);
+                }
+                _model.Due = dueDate;
+            }
+            else
+            {
+                _model.Due = null;
+            }
+
             _model.ReminderAt = _reminderDate;
 
             // Parse regarding ID if provided

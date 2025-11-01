@@ -32,7 +32,7 @@ public class ClientServiceProxy
                 SortDirection = "Ascending"
             };
 
-            var response = await _httpClient.PostAsJsonAsync("/api/clients/pagination", request);
+            var response = await _httpClient.PostAsJsonAsync("/api/crm/clients/pagination", request);
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
@@ -61,7 +61,7 @@ public class ClientServiceProxy
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/api/clients/{id}");
+            var response = await _httpClient.GetAsync($"/api/crm/clients/{id}");
             if (!response.IsSuccessStatusCode)
             {
                 Console.WriteLine($"Error getting client by ID: {response.StatusCode}");
@@ -85,7 +85,7 @@ public class ClientServiceProxy
     {
         try
         {
-            var response = await _httpClient.PostAsJsonAsync("/api/clients", clientDto);
+            var response = await _httpClient.PostAsJsonAsync("/api/crm/clients", clientDto);
             if (!response.IsSuccessStatusCode)
             {
                 Console.WriteLine($"Error creating client: {response.StatusCode}");
@@ -109,7 +109,7 @@ public class ClientServiceProxy
     {
         try
         {
-            var response = await _httpClient.PutAsJsonAsync("/api/clients", clientDto);
+            var response = await _httpClient.PutAsJsonAsync("/api/crm/clients", clientDto);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -126,7 +126,7 @@ public class ClientServiceProxy
     {
         try
         {
-            var response = await _httpClient.DeleteAsync($"/api/clients/{id}");
+            var response = await _httpClient.DeleteAsync($"/api/crm/clients/{id}");
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -143,7 +143,7 @@ public class ClientServiceProxy
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/api/clients?type={clientType}");
+            var response = await _httpClient.GetAsync($"/api/crm/clients?type={clientType}");
             if (!response.IsSuccessStatusCode)
             {
                 Console.WriteLine($"Error getting clients by type: {response.StatusCode}");

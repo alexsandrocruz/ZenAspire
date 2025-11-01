@@ -113,6 +113,10 @@ public class ApplicationDbContextInitializer
     {
         if (await _context.Products.AnyAsync()) return;
         _logger.LogInformation("Seeding data...");
+
+        // Seed Clients
+        await SeedClientsAsync();
+
         var products = new List<Product>
         {
             new Product
@@ -205,6 +209,133 @@ public class ApplicationDbContextInitializer
         };
 
         await _context.Stocks.AddRangeAsync(stocks);
+        await _context.SaveChangesAsync();
+    }
+
+    private async Task SeedClientsAsync()
+    {
+        if (await _context.Clients.AnyAsync()) return;
+
+        _logger.LogInformation("Seeding clients and contacts...");
+
+        // Get the first tenant to associate with clients
+        var tenantId = await _context.Tenants.Select(t => t.Id).FirstOrDefaultAsync();
+        if (string.IsNullOrEmpty(tenantId))
+        {
+            _logger.LogWarning("No tenant found. Skipping client seeding.");
+            return;
+        }
+
+        var clients = new List<Client>
+        {
+            new Client
+            {
+                TenantId = tenantId,
+                Name = "Acme Corporation",
+                Type = ClientType.Company,
+                Status = ClientStatus.Active,
+                Industry = "Technology",
+                Email = "contact@acme.com",
+                Phone = "+1-555-0100",
+                Website = "https://acme.com",
+                Notes = "Leading technology solutions provider",
+                Priority = ClientPriority.High,
+                LifecycleStage = "Client"
+            },
+            new Client
+            {
+                TenantId = tenantId,
+                Name = "TechStart Innovations",
+                Type = ClientType.Company,
+                Status = ClientStatus.Active,
+                Industry = "Software Development",
+                Email = "info@techstart.com",
+                Phone = "+1-555-0200",
+                Website = "https://techstart.com",
+                Notes = "Innovative software development company",
+                Priority = ClientPriority.Medium,
+                LifecycleStage = "Client"
+            },
+            new Client
+            {
+                TenantId = tenantId,
+                Name = "Global Retail Inc",
+                Type = ClientType.Company,
+                Status = ClientStatus.Active,
+                Industry = "Retail",
+                Email = "sales@globalretail.com",
+                Phone = "+1-555-0300",
+                Website = "https://globalretail.com",
+                Notes = "International retail chain",
+                Priority = ClientPriority.High,
+                LifecycleStage = "Client"
+            }
+        };
+
+        await _context.Clients.AddRangeAsync(clients);
+        await _context.SaveChangesAsync();
+
+        // Seed Contacts for each Client
+        var contacts = new List<Contact>
+        {
+            new Contact
+            {
+                TenantId = tenantId,
+                FirstName = "John",
+                LastName = "Smith",
+                Email = "john.smith@acme.com",
+                Phone = "+1-555-0101",
+                JobTitle = "CEO",
+                Department = "Executive",
+                ClientId = clients[0].Id,
+                Status = ContactStatus.Active,
+                IsMainContact = true,
+                IsDecisionMaker = true
+            },
+            new Contact
+            {
+                TenantId = tenantId,
+                FirstName = "Sarah",
+                LastName = "Johnson",
+                Email = "sarah.johnson@acme.com",
+                Phone = "+1-555-0102",
+                JobTitle = "CTO",
+                Department = "Technology",
+                ClientId = clients[0].Id,
+                Status = ContactStatus.Active,
+                IsDecisionMaker = true
+            },
+            new Contact
+            {
+                TenantId = tenantId,
+                FirstName = "Michael",
+                LastName = "Chen",
+                Email = "michael.chen@techstart.com",
+                Phone = "+1-555-0201",
+                JobTitle = "Founder & CEO",
+                Department = "Executive",
+                ClientId = clients[1].Id,
+                Status = ContactStatus.Active,
+                IsMainContact = true,
+                IsDecisionMaker = true
+            },
+            new Contact
+            {
+                TenantId = tenantId,
+                FirstName = "Emily",
+                LastName = "Davis",
+                Email = "emily.davis@globalretail.com",
+                Phone = "+1-555-0301",
+                JobTitle = "VP of Operations",
+                Department = "Operations",
+                ClientId = clients[2].Id,
+                Status = ContactStatus.Active,
+                IsMainContact = true,
+                IsDecisionMaker = true
+            }
+        };
+
+        await _context.Contacts.AddRangeAsync(contacts);
         await _context.SaveChangesAsync();
     }
 }

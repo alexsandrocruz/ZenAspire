@@ -33,7 +33,7 @@ public class ContactServiceProxy
                 FilterByClientId = clientId
             };
 
-            var response = await _httpClient.PostAsJsonAsync("/api/contacts/pagination", request);
+            var response = await _httpClient.PostAsJsonAsync("/api/crm/contacts/pagination", request);
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
@@ -61,7 +61,7 @@ public class ContactServiceProxy
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/api/contacts/{id}");
+            var response = await _httpClient.GetAsync($"/api/crm/contacts/{id}");
             if (!response.IsSuccessStatusCode)
             {
                 Console.WriteLine($"Error getting contact by ID: {response.StatusCode}");
@@ -85,7 +85,7 @@ public class ContactServiceProxy
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/api/contacts/by-client/{clientId}");
+            var response = await _httpClient.GetAsync($"/api/crm/contacts/by-client/{clientId}");
             if (!response.IsSuccessStatusCode)
             {
                 Console.WriteLine($"Error getting contacts by client ID: {response.StatusCode}");
@@ -139,7 +139,7 @@ public class ContactServiceProxy
 
             Console.WriteLine($"   Request: {System.Text.Json.JsonSerializer.Serialize(request)}");
 
-            var response = await _httpClient.PostAsJsonAsync("/api/contacts", request);
+            var response = await _httpClient.PostAsJsonAsync("/api/crm/contacts", request);
             if (!response.IsSuccessStatusCode)
             {
                 var errorContent = await response.Content.ReadAsStringAsync();
@@ -168,7 +168,7 @@ public class ContactServiceProxy
     {
         try
         {
-            var response = await _httpClient.PutAsJsonAsync("/api/contacts", contactDto);
+            var response = await _httpClient.PutAsJsonAsync("/api/crm/contacts", contactDto);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -185,7 +185,7 @@ public class ContactServiceProxy
     {
         try
         {
-            var response = await _httpClient.DeleteAsync($"/api/contacts/{id}");
+            var response = await _httpClient.DeleteAsync($"/api/crm/contacts/{id}");
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
@@ -202,7 +202,7 @@ public class ContactServiceProxy
     {
         try
         {
-            var response = await _httpClient.GetAsync($"/api/contacts?type={contactType}");
+            var response = await _httpClient.GetAsync($"/api/crm/contacts?type={contactType}");
             if (!response.IsSuccessStatusCode)
             {
                 Console.WriteLine($"Error getting contacts by type: {response.StatusCode}");
@@ -226,7 +226,7 @@ public class ContactServiceProxy
     {
         try
         {
-            var response = await _httpClient.GetAsync("/api/contacts?standalone=true");
+            var response = await _httpClient.GetAsync("/api/crm/contacts?standalone=true");
             if (!response.IsSuccessStatusCode)
             {
                 Console.WriteLine($"Error getting standalone contacts: {response.StatusCode}");

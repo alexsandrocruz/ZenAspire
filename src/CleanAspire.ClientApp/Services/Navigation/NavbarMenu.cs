@@ -119,6 +119,27 @@ public static class NavbarMenu
                             Href = "/contacts/index",
                             Status = PageStatus.New,
                             Description = "Manage contacts and their relationships with clients."
+                        },
+                        new MenuItem
+                        {
+                            Label = "Activities",
+                            Href = "/activities/index",
+                            Status = PageStatus.New,
+                            Description = "Manage activities, tasks, meetings, and follow-ups."
+                        },
+                        new MenuItem
+                        {
+                            Label = "Notes",
+                            Href = "",
+                            Status = PageStatus.ComingSoon,
+                            Description = "View and manage notes across all entities."
+                        },
+                        new MenuItem
+                        {
+                            Label = "Timeline",
+                            Href = "",
+                            Status = PageStatus.ComingSoon,
+                            Description = "Unified timeline view of all activities and interactions."
                         }
                     }
                 },

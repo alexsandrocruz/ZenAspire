@@ -1,0 +1,317 @@
+@using System.Net.Http.Json
+@using CleanAspire.ClientApp.DTOs
+@using CleanAspire.ClientApp.Services.Activities
+
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject ActivityServiceProxy ActivityServiceProxy
+
+<MudDialog>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="@_formIsValid">
+            <MudGrid Spacing="3">
+                <!-- Subject -->
+                <MudItem xs="12">
+                    <MudTextField T="string"
+                                  @bind-Value="_model.Subject"
+                                  Label="Subject"
+                                  Required="true"
+                                  RequiredError="Subject is required"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+
+                <!-- Type and Priority Row -->
+                <MudItem xs="12" md="6">
+                    <MudSelect T="ActivityType"
+                               @bind-Value="_model.Type"
+                               Label="Type"
+                               Required="true"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem Value="@ActivityType.Task">Task</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.PhoneCall">Phone Call</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.Meeting">Meeting</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.FollowUp">Follow Up</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.Email">Email</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.WhatsAppMessage">WhatsApp Message</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.WhatsAppFlow">WhatsApp Flow</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.SMS">SMS</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.InstagramDM">Instagram DM</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.FacebookMessage">Facebook Message</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.LinkedInMessage">LinkedIn Message</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.TwitterDM">Twitter DM</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.VideoCall">Video Call</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.WebChat">Web Chat</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.Chatbot">Chatbot</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.Event">Event</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.Webinar">Webinar</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.Presentation">Presentation</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.Workshop">Workshop</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.Newsletter">Newsletter</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.Campaign">Campaign</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.Survey">Survey</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.Note">Note</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.Document">Document</MudSelectItem>
+                        <MudSelectItem Value="@ActivityType.Other">Other</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudSelect T="ActivityPriority"
+                               @bind-Value="_model.Priority"
+                               Label="Priority"
+                               Required="true"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem Value="@ActivityPriority.Low">Low</MudSelectItem>
+                        <MudSelectItem Value="@ActivityPriority.Normal">Normal</MudSelectItem>
+                        <MudSelectItem Value="@ActivityPriority.High">High</MudSelectItem>
+                        <MudSelectItem Value="@ActivityPriority.Urgent">Urgent</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <!-- Status -->
+                <MudItem xs="12" md="6">
+                    <MudSelect T="ActivityStatus"
+                               @bind-Value="_model.Status"
+                               Label="Status"
+                               Required="true"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem Value="@ActivityStatus.Open">Open</MudSelectItem>
+                        <MudSelectItem Value="@ActivityStatus.InProgress">In Progress</MudSelectItem>
+                        <MudSelectItem Value="@ActivityStatus.Completed">Completed</MudSelectItem>
+                        <MudSelectItem Value="@ActivityStatus.Canceled">Canceled</MudSelectItem>
+                        <MudSelectItem Value="@ActivityStatus.Deferred">Deferred</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <!-- Duration -->
+                <MudItem xs="12" md="6">
+                    <MudNumericField T="int?"
+                                     @bind-Value="_model.DurationMinutes"
+                                     Label="Duration (minutes)"
+                                     Min="0"
+                                     Variant="Variant.Outlined" />
+                </MudItem>
+
+                <!-- Start Date and Due Date -->
+                <MudItem xs="12" md="6">
+                    <MudDatePicker @bind-Date="_startDate"
+                                   Label="Start Date"
+                                   Required="true"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudDatePicker @bind-Date="_dueDate"
+                                   Label="Due Date"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+
+                <!-- Reminder -->
+                <MudItem xs="12" md="6">
+                    <MudDatePicker @bind-Date="_reminderDate"
+                                   Label="Reminder Date"
+                                   Variant="Variant.Outlined" />
+                </MudItem>
+
+                <!-- Location -->
+                <MudItem xs="12" md="6">
+                    <MudTextField T="string"
+                                  @bind-Value="_model.Location"
+                                  Label="Location"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+
+                <!-- Regarding Type and ID -->
+                <MudItem xs="12" md="6">
+                    <MudSelect T="RegardingType?"
+                               @bind-Value="_model.RegardingType"
+                               Label="Regarding Type"
+                               Clearable="true"
+                               Variant="Variant.Outlined">
+                        <MudSelectItem Value="@((RegardingType?)null)">None</MudSelectItem>
+                        <MudSelectItem Value="@RegardingType.Client">Client</MudSelectItem>
+                        <MudSelectItem Value="@RegardingType.Contact">Contact</MudSelectItem>
+                        <MudSelectItem Value="@RegardingType.Opportunity">Opportunity</MudSelectItem>
+                        <MudSelectItem Value="@RegardingType.Case">Case</MudSelectItem>
+                        <MudSelectItem Value="@RegardingType.Lead">Lead</MudSelectItem>
+                        <MudSelectItem Value="@RegardingType.Campaign">Campaign</MudSelectItem>
+                        <MudSelectItem Value="@RegardingType.Project">Project</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+
+                <MudItem xs="12" md="6">
+                    <MudTextField T="string"
+                                  @bind-Value="_regardingIdString"
+                                  Label="Regarding ID (GUID)"
+                                  Variant="Variant.Outlined"
+                                  Disabled="!_model.RegardingType.HasValue"
+                                  HelperText="@(_model.RegardingType.HasValue ? "Enter the GUID of the related entity" : "Select a Regarding Type first")" />
+                </MudItem>
+
+                <!-- Assigned To -->
+                <MudItem xs="12">
+                    <MudTextField T="string"
+                                  @bind-Value="_model.AssignedToUserId"
+                                  Label="Assigned To User ID"
+                                  Variant="Variant.Outlined"
+                                  HelperText="Leave empty to assign to yourself" />
+                </MudItem>
+
+                <!-- Description -->
+                <MudItem xs="12">
+                    <MudTextField T="string"
+                                  @bind-Value="_model.Description"
+                                  Label="Description"
+                                  Lines="5"
+                                  Variant="Variant.Outlined" />
+                </MudItem>
+            </MudGrid>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="!_formIsValid || _saving">
+            @if (_saving)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+            }
+            @(IsEdit ? "Update" : "Create")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter] public bool IsEdit { get; set; } = false;
+    [Parameter] public ActivityDto? Activity { get; set; }
+    [Parameter] public RegardingType? Regarding { get; set; }
+    [Parameter] public Guid? RegardingId { get; set; }
+
+    private MudForm _form = null!;
+    private bool _formIsValid = false;
+    private bool _saving = false;
+    private ActivityRequest _model = new();
+    private DateTime? _startDate;
+    private DateTime? _dueDate;
+    private DateTime? _reminderDate;
+    private string _regardingIdString = string.Empty;
+
+    protected override void OnInitialized()
+    {
+        if (IsEdit && Activity != null)
+        {
+            // Edit mode - populate from existing activity
+            _model = new ActivityRequest
+            {
+                Type = Activity.Type,
+                Status = Activity.Status,
+                Start = Activity.Start,
+                Due = Activity.Due,
+                Subject = Activity.Subject,
+                Description = Activity.Description,
+                RegardingType = Activity.RegardingType,
+                RegardingId = Activity.RegardingId,
+                AssignedToUserId = Activity.AssignedToUserId,
+                ReminderAt = Activity.ReminderAt,
+                Priority = Activity.Priority,
+                Location = Activity.Location,
+                DurationMinutes = Activity.DurationMinutes
+            };
+
+            _startDate = Activity.Start;
+            _dueDate = Activity.Due;
+            _reminderDate = Activity.ReminderAt;
+            _regardingIdString = Activity.RegardingId?.ToString() ?? string.Empty;
+        }
+        else
+        {
+            // Create mode - set defaults
+            _model = new ActivityRequest
+            {
+                Type = ActivityType.Task,
+                Status = ActivityStatus.Open,
+                Start = DateTime.UtcNow,
+                Priority = ActivityPriority.Normal,
+                RegardingType = Regarding,
+                RegardingId = RegardingId
+            };
+
+            _startDate = DateTime.UtcNow;
+
+            if (RegardingId.HasValue)
+            {
+                _regardingIdString = RegardingId.Value.ToString();
+            }
+        }
+    }
+
+    private async Task Submit()
+    {
+        await _form.Validate();
+
+        if (!_formIsValid)
+        {
+            Snackbar.Add("Please fix validation errors", Severity.Error);
+            return;
+        }
+
+        _saving = true;
+        StateHasChanged();
+
+        try
+        {
+            // Update dates from date pickers
+            if (_startDate.HasValue)
+                _model.Start = _startDate.Value;
+
+            _model.Due = _dueDate;
+            _model.ReminderAt = _reminderDate;
+
+            // Parse regarding ID if provided
+            if (!string.IsNullOrEmpty(_regardingIdString) && Guid.TryParse(_regardingIdString, out var regardingGuid))
+            {
+                _model.RegardingId = regardingGuid;
+            }
+            else
+            {
+                _model.RegardingId = null;
+            }
+
+            bool success;
+            if (IsEdit && Activity != null)
+            {
+                success = await ActivityServiceProxy.UpdateActivityAsync(Activity.Id, _model);
+            }
+            else
+            {
+                var result = await ActivityServiceProxy.CreateActivityAsync(_model);
+                success = result != null;
+            }
+
+            if (success)
+            {
+                Snackbar.Add(IsEdit ? "Activity updated successfully" : "Activity created successfully", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                Snackbar.Add(IsEdit ? "Failed to update activity" : "Failed to create activity", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

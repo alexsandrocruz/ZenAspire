@@ -1,0 +1,437 @@
+@page "/clients/details/{ClientId}"
+@using CleanAspire.ClientApp.Pages.Clients.Components
+@using CleanAspire.ClientApp.Services.Clients
+@using CleanAspire.ClientApp.Shared
+@using CleanAspire.ClientApp.Shared.Components
+@using CleanAspire.ClientApp.DTOs
+
+@inject ClientServiceProxy ClientServiceProxy
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject HttpClient HttpClient
+
+<PageTitle>@(_client?.DisplayName ?? "Client Details")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    @if (_loading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+            <MudProgressCircular Indeterminate="true" />
+            <MudText Typo="Typo.body2">@L["Loading client details..."]</MudText>
+        </MudStack>
+    }
+    else if (_error != null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            @L["Error loading client: {0}", _error]
+        </MudAlert>
+        <MudButton OnClick="GoBack" Variant="Variant.Outlined">
+            <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Class="mr-2" />
+            @L["Back to Clients"]
+        </MudButton>
+    }
+    else if (_client != null)
+    {
+        <!-- Header -->
+        <MudPaper Class="pa-4 mb-4">
+            <MudStack Row Spacing="2" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                                   OnClick="GoBack"
+                                   Size="Size.Medium"
+                                   Title="@L["Back to Clients"]" />
+                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Large" />
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.h5">@_client.DisplayName</MudText>
+                        <MudStack Row Spacing="2">
+                            <MudChip T="string" Size="Size.Small" Color="@GetClientTypeColor(_client.Type)">
+                                @_client.TypeName
+                            </MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(_client.Status)">
+                                @_client.StatusName
+                            </MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(_client.Priority)">
+                                @_client.PriorityName
+                            </MudChip>
+                        </MudStack>
+                    </MudStack>
+                </MudStack>
+                <MudStack Row Spacing="1">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               OnClick="EditClient"
+                               StartIcon="@Icons.Material.Filled.Edit">
+                        @L["Edit"]
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               OnClick="DeleteClient"
+                               StartIcon="@Icons.Material.Filled.Delete">
+                        @L["Delete"]
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        <!-- Tabs -->
+        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+            <!-- Overview Tab -->
+            <MudTabPanel Text="@L["Overview"]" Icon="@Icons.Material.Filled.Info">
+                <MudPaper Class="pa-4">
+                    <MudGrid Spacing="3">
+                        <!-- Basic Information -->
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.h6" Class="mb-3">@L["Basic Information"]</MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudStack Spacing="1">
+                                <MudText Typo="Typo.caption" Color="Color.Default">@L["Name"]</MudText>
+                                <MudText Typo="Typo.body1">@_client.Name</MudText>
+                            </MudStack>
+                        </MudItem>
+
+                        @if (!string.IsNullOrEmpty(_client.TradeName))
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.caption" Color="Color.Default">@L["Trade Name"]</MudText>
+                                    <MudText Typo="Typo.body1">@_client.TradeName</MudText>
+                                </MudStack>
+                            </MudItem>
+                        }
+
+                        @if (!string.IsNullOrEmpty(_client.DocumentNumber))
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.caption" Color="Color.Default">@L["Document Number"]</MudText>
+                                    <MudText Typo="Typo.body1">@_client.DocumentNumber</MudText>
+                                </MudStack>
+                            </MudItem>
+                        }
+
+                        <!-- Contact Information -->
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.h6" Class="mb-3 mt-3">@L["Contact Information"]</MudText>
+                        </MudItem>
+
+                        @if (!string.IsNullOrEmpty(_client.Email))
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.caption" Color="Color.Default">@L["Email"]</MudText>
+                                    <MudText Typo="Typo.body1">@_client.Email</MudText>
+                                </MudStack>
+                            </MudItem>
+                        }
+
+                        @if (!string.IsNullOrEmpty(_client.Phone))
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.caption" Color="Color.Default">@L["Phone"]</MudText>
+                                    <MudText Typo="Typo.body1">@_client.Phone</MudText>
+                                </MudStack>
+                            </MudItem>
+                        }
+
+                        @if (!string.IsNullOrEmpty(_client.Website))
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.caption" Color="Color.Default">@L["Website"]</MudText>
+                                    <MudLink Href="@_client.Website" Target="_blank">@_client.Website</MudLink>
+                                </MudStack>
+                            </MudItem>
+                        }
+
+                        <!-- Business Information -->
+                        @if (!string.IsNullOrEmpty(_client.Industry) || !string.IsNullOrEmpty(_client.Size) || _client.AnnualRevenue.HasValue || _client.EmployeeCount.HasValue)
+                        {
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.h6" Class="mb-3 mt-3">@L["Business Information"]</MudText>
+                            </MudItem>
+
+                            @if (!string.IsNullOrEmpty(_client.Industry))
+                            {
+                                <MudItem xs="12" md="6">
+                                    <MudStack Spacing="1">
+                                        <MudText Typo="Typo.caption" Color="Color.Default">@L["Industry"]</MudText>
+                                        <MudText Typo="Typo.body1">@_client.Industry</MudText>
+                                    </MudStack>
+                                </MudItem>
+                            }
+
+                            @if (!string.IsNullOrEmpty(_client.Size))
+                            {
+                                <MudItem xs="12" md="6">
+                                    <MudStack Spacing="1">
+                                        <MudText Typo="Typo.caption" Color="Color.Default">@L["Size"]</MudText>
+                                        <MudText Typo="Typo.body1">@_client.Size</MudText>
+                                    </MudStack>
+                                </MudItem>
+                            }
+
+                            @if (_client.AnnualRevenue.HasValue)
+                            {
+                                <MudItem xs="12" md="6">
+                                    <MudStack Spacing="1">
+                                        <MudText Typo="Typo.caption" Color="Color.Default">@L["Annual Revenue"]</MudText>
+                                        <MudText Typo="Typo.body1">@_client.AnnualRevenue.Value.ToString("C")</MudText>
+                                    </MudStack>
+                                </MudItem>
+                            }
+
+                            @if (_client.EmployeeCount.HasValue)
+                            {
+                                <MudItem xs="12" md="6">
+                                    <MudStack Spacing="1">
+                                        <MudText Typo="Typo.caption" Color="Color.Default">@L["Employee Count"]</MudText>
+                                        <MudText Typo="Typo.body1">@_client.EmployeeCount.Value</MudText>
+                                    </MudStack>
+                                </MudItem>
+                            }
+                        }
+
+                        <!-- Additional Information -->
+                        @if (!string.IsNullOrEmpty(_client.Notes))
+                        {
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.h6" Class="mb-3 mt-3">@L["Notes"]</MudText>
+                                <MudText Typo="Typo.body2">@_client.Notes</MudText>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudPaper>
+            </MudTabPanel>
+
+            <!-- Timeline Tab -->
+            <MudTabPanel Text="@L["Timeline"]" Icon="@Icons.Material.Filled.Timeline">
+                <TimelineView OwnerType="OwnerType.Client"
+                              OwnerId="@_clientGuid"
+                              Title="@L["Client Timeline"]"
+                              ShowFilters="true" />
+            </MudTabPanel>
+
+            <!-- Activities Tab -->
+            <MudTabPanel Text="@L["Activities"]" Icon="@Icons.Material.Filled.Assignment">
+                <ActivitiesPanel RegardingType="RegardingType.Client"
+                                 RegardingId="@_clientGuid"
+                                 Title="@L["Client Activities"]" />
+            </MudTabPanel>
+
+            <!-- Contacts Tab -->
+            <MudTabPanel Text="@L["Contacts"]" Icon="@Icons.Material.Filled.People">
+                <MudPaper Class="pa-4">
+                    <MudStack Row Spacing="2" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+                        <MudText Typo="Typo.h6">@L["Client Contacts"]</MudText>
+                        <MudButton Size="Size.Small"
+                                   Color="Color.Primary"
+                                   StartIcon="@Icons.Material.Filled.Add"
+                                   OnClick="AddContact">
+                            @L["Add Contact"]
+                        </MudButton>
+                    </MudStack>
+                    <MudText Typo="Typo.body2" Color="Color.Default">
+                        @L["Contact list for this client will be displayed here"]
+                    </MudText>
+                </MudPaper>
+            </MudTabPanel>
+
+            <!-- Addresses Tab -->
+            <MudTabPanel Text="@L["Addresses"]" Icon="@Icons.Material.Filled.LocationOn">
+                <AddressesPanel OwnerType="OwnerType.Client"
+                                OwnerId="@_clientGuid"
+                                Title="@L["Client Addresses"]" />
+            </MudTabPanel>
+
+            <!-- Channels Tab -->
+            <MudTabPanel Text="@L["Channels"]" Icon="@Icons.Material.Filled.Chat">
+                <ChannelsPanel OwnerType="OwnerType.Client"
+                               OwnerId="@_clientGuid"
+                               Title="@L["Communication Channels"]" />
+            </MudTabPanel>
+
+            <!-- Notes Tab -->
+            <MudTabPanel Text="@L["Notes"]" Icon="@Icons.Material.Filled.StickyNote2">
+                <NotesPanel OwnerType="OwnerType.Client"
+                            OwnerId="@_clientGuid"
+                            Title="@L["Client Notes"]" />
+            </MudTabPanel>
+
+            <!-- Tags Tab -->
+            <MudTabPanel Text="@L["Tags"]" Icon="@Icons.Material.Filled.Label">
+                <TagsEditor OwnerType="OwnerType.Client"
+                            OwnerId="@_clientGuid"
+                            Title="@L["Client Tags"]" />
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public string ClientId { get; set; } = string.Empty;
+
+    private ClientDto? _client;
+    private Guid _clientGuid;
+    private bool _loading = false;
+    private string? _error = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClient();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadClient();
+    }
+
+    private async Task LoadClient()
+    {
+        if (string.IsNullOrEmpty(ClientId))
+        {
+            _error = "Client ID is required";
+            return;
+        }
+
+        if (!Guid.TryParse(ClientId, out _clientGuid))
+        {
+            _error = "Invalid Client ID format";
+            return;
+        }
+
+        _loading = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            _client = await ClientServiceProxy.GetClientByIdAsync(ClientId);
+
+            if (_client == null)
+            {
+                _error = "Client not found";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add(@L["Error loading client: {0}", ex.Message], Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/clients/index");
+    }
+
+    private async Task EditClient()
+    {
+        if (_client == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["IsEdit"] = true,
+            ["Client"] = _client
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Large,
+        };
+
+        var dialog = DialogService.Show<NewClientDialog>(@L["Edit Client"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadClient();
+        }
+    }
+
+    private async Task DeleteClient()
+    {
+        if (_client == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["Message"] = string.Format(@L["Are you sure you want to delete the client '{0}'? This action cannot be undone."], _client.DisplayName)
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+        };
+
+        var dialog = DialogService.Show<DeleteConfirmationDialog>(@L["Delete Client"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var success = await ClientServiceProxy.DeleteClientAsync(_client.Id);
+            if (success)
+            {
+                Snackbar.Add(@L["Client deleted successfully"], Severity.Success);
+                GoBack();
+            }
+            else
+            {
+                Snackbar.Add(@L["Failed to delete client"], Severity.Error);
+            }
+        }
+    }
+
+    private void AddContact()
+    {
+        // Navigate to contacts page with client filter or open contact dialog
+        Navigation.NavigateTo($"/contacts/index?clientId={ClientId}");
+    }
+
+    private Color GetClientTypeColor(int type)
+    {
+        return type switch
+        {
+            1 => Color.Primary,    // Company
+            2 => Color.Secondary,  // Public Figure
+            3 => Color.Info,       // Government
+            4 => Color.Warning,    // Non Profit
+            _ => Color.Default
+        };
+    }
+
+    private Color GetStatusColor(int status)
+    {
+        return status switch
+        {
+            1 => Color.Warning,    // Prospect
+            2 => Color.Success,    // Active
+            3 => Color.Default,    // Inactive
+            4 => Color.Error,      // Churned
+            5 => Color.Dark,       // Blocked
+            _ => Color.Default
+        };
+    }
+
+    private Color GetPriorityColor(int priority)
+    {
+        return priority switch
+        {
+            1 => Color.Info,       // Low
+            2 => Color.Warning,    // Medium
+            3 => Color.Error,      // High
+            4 => Color.Secondary,  // VIP
+            _ => Color.Default
+        };
+    }
+}

@@ -1,0 +1,309 @@
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.LocationOn" Class="mr-3" />
+            @(Address != null ? "Edit Address" : "New Address")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="@_success" @bind-Errors="@_errors">
+            <MudStack Spacing="3">
+                <!-- Label -->
+                <MudTextField T="string"
+                              @bind-Value="_model.Label"
+                              Label="Label"
+                              Variant="Variant.Outlined"
+                              Placeholder="e.g., Home, Office, Billing"
+                              HelperText="Optional: Give this address a label" />
+
+                <!-- Address Line 1 -->
+                <MudTextField T="string"
+                              @bind-Value="_model.Line1"
+                              Label="Address Line 1 *"
+                              Required="true"
+                              RequiredError="Address Line 1 is required"
+                              MaxLength="200"
+                              Variant="Variant.Outlined"
+                              Placeholder="Street address, P.O. box" />
+
+                <!-- Address Line 2 -->
+                <MudTextField T="string"
+                              @bind-Value="_model.Line2"
+                              Label="Address Line 2"
+                              MaxLength="100"
+                              Variant="Variant.Outlined"
+                              Placeholder="Apartment, suite, unit, building, floor, etc." />
+
+                <!-- District/Neighborhood -->
+                <MudTextField T="string"
+                              @bind-Value="_model.District"
+                              Label="District/Neighborhood"
+                              MaxLength="100"
+                              Variant="Variant.Outlined"
+                              Placeholder="Neighborhood or district" />
+
+                <!-- City and State -->
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="8">
+                        <MudTextField T="string"
+                                      @bind-Value="_model.City"
+                                      Label="City *"
+                                      Required="true"
+                                      RequiredError="City is required"
+                                      MaxLength="100"
+                                      Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField T="string"
+                                      @bind-Value="_model.State"
+                                      Label="State *"
+                                      Required="true"
+                                      RequiredError="State is required"
+                                      MaxLength="50"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="e.g., SP, RJ" />
+                    </MudItem>
+                </MudGrid>
+
+                <!-- ZIP and Country -->
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="4">
+                        <MudTextField T="string"
+                                      @bind-Value="_model.Zip"
+                                      Label="ZIP/Postal Code *"
+                                      Required="true"
+                                      RequiredError="ZIP code is required"
+                                      MaxLength="20"
+                                      Variant="Variant.Outlined"
+                                      Placeholder="e.g., 01310-100" />
+                    </MudItem>
+                    <MudItem xs="12" md="8">
+                        <MudSelect T="string"
+                                   @bind-Value="_model.Country"
+                                   Label="Country *"
+                                   Required="true"
+                                   RequiredError="Country is required"
+                                   Variant="Variant.Outlined">
+                            @foreach (var country in GetCommonCountries())
+                            {
+                                <MudSelectItem Value="@country.Code">
+                                    @country.Name (@country.Code)
+                                </MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- Primary Address Switch -->
+                <MudSwitch T="bool"
+                           @bind-Checked="_model.IsPrimary"
+                           Color="Color.Primary"
+                           Label="Set as primary address"
+                           UnCheckedColor="Color.Default">
+                    <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Class="mr-2" />
+                </MudSwitch>
+
+                @if (_model.IsPrimary)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Icon="@Icons.Material.Filled.Info">
+                        This will be set as the default address for this entity
+                    </MudAlert>
+                }
+
+                @if (_errors?.Length > 0)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">
+                        @foreach (var error in _errors)
+                        {
+                            <MudText Typo="Typo.body2">@error</MudText>
+                        }
+                    </MudAlert>
+                }
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!_success || _isSubmitting)">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+            }
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    /// <summary>
+    /// Cascading parameter for MudDialog instance
+    /// </summary>
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>
+    /// Address to edit. If null, creates a new address.
+    /// </summary>
+    [Parameter]
+    public AddressDto? Address { get; set; }
+
+    /// <summary>
+    /// Required for create mode: Type of entity this address belongs to
+    /// </summary>
+    [Parameter]
+    public OwnerType OwnerType { get; set; }
+
+    /// <summary>
+    /// Required for create mode: ID of the entity this address belongs to
+    /// </summary>
+    [Parameter]
+    public Guid OwnerId { get; set; }
+
+    private MudForm? _form;
+    private bool _success = false;
+    private string[] _errors = Array.Empty<string>();
+    private bool _isSubmitting = false;
+    private AddressRequest _model = new();
+
+    protected override void OnInitialized()
+    {
+        if (Address != null)
+        {
+            // Edit mode - populate from existing address
+            _model = new AddressRequest
+            {
+                OwnerType = Address.OwnerType,
+                OwnerId = Address.OwnerId,
+                Line1 = Address.Line1,
+                Line2 = Address.Line2,
+                District = Address.District,
+                City = Address.City,
+                State = Address.State,
+                Zip = Address.Zip,
+                Country = Address.Country,
+                IsPrimary = Address.IsPrimary,
+                Label = Address.Label,
+                GeoLat = Address.GeoLat,
+                GeoLng = Address.GeoLng
+            };
+        }
+        else
+        {
+            // Create mode - set defaults
+            _model.OwnerType = OwnerType;
+            _model.OwnerId = OwnerId;
+            _model.Country = "BR"; // Default to Brazil
+            _model.IsPrimary = false;
+        }
+    }
+
+    /// <summary>
+    /// Validates and submits the address form
+    /// </summary>
+    private async Task Submit()
+    {
+        if (_form == null || !_form.IsValid)
+        {
+            Snackbar.Add("Please correct the validation errors", Severity.Error);
+            return;
+        }
+
+        // Additional validations
+        if (string.IsNullOrWhiteSpace(_model.Line1))
+        {
+            Snackbar.Add("Address Line 1 is required", Severity.Error);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_model.City))
+        {
+            Snackbar.Add("City is required", Severity.Error);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_model.State))
+        {
+            Snackbar.Add("State is required", Severity.Error);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_model.Zip))
+        {
+            Snackbar.Add("ZIP/Postal Code is required", Severity.Error);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_model.Country))
+        {
+            Snackbar.Add("Country is required", Severity.Error);
+            return;
+        }
+
+        _isSubmitting = true;
+        StateHasChanged();
+
+        try
+        {
+            // Return the request model to the caller
+            MudDialog.Close(DialogResult.Ok(_model));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"An error occurred: {ex.Message}", Severity.Error);
+            _isSubmitting = false;
+        }
+    }
+
+    /// <summary>
+    /// Cancels the dialog
+    /// </summary>
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    /// <summary>
+    /// Gets list of common countries for the dropdown
+    /// </summary>
+    private List<(string Code, string Name)> GetCommonCountries()
+    {
+        return new List<(string Code, string Name)>
+        {
+            ("BR", "Brazil"),
+            ("US", "United States"),
+            ("GB", "United Kingdom"),
+            ("CA", "Canada"),
+            ("AU", "Australia"),
+            ("DE", "Germany"),
+            ("FR", "France"),
+            ("IT", "Italy"),
+            ("ES", "Spain"),
+            ("PT", "Portugal"),
+            ("MX", "Mexico"),
+            ("AR", "Argentina"),
+            ("CL", "Chile"),
+            ("CO", "Colombia"),
+            ("PE", "Peru"),
+            ("UY", "Uruguay"),
+            ("VE", "Venezuela"),
+            ("CN", "China"),
+            ("JP", "Japan"),
+            ("IN", "India"),
+            ("ZA", "South Africa"),
+            ("NL", "Netherlands"),
+            ("BE", "Belgium"),
+            ("CH", "Switzerland"),
+            ("AT", "Austria"),
+            ("SE", "Sweden"),
+            ("NO", "Norway"),
+            ("DK", "Denmark"),
+            ("FI", "Finland"),
+            ("IE", "Ireland"),
+            ("PL", "Poland"),
+            ("RU", "Russia"),
+            ("OTHER", "Other")
+        };
+    }
+}

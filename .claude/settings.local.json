@@ -4,7 +4,11 @@
       "Bash(dotnet build:*)",
       "Bash(dotnet ef migrations add:*)",
       "Bash(dotnet clean:*)",
-      "Bash(dotnet ef database update:*)"
+      "Bash(dotnet ef database update:*)",
+      "Bash(if [ -d \"D:\\@dev\\ZenAspire\\src\\CleanAspire.ClientApp\\Shared\\Components\" ])",
+      "Bash(then echo \"Directory exists\")",
+      "Bash(else echo \"Directory does not exist\")",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": []

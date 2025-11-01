@@ -1,0 +1,501 @@
+@page "/activities/index"
+@using CleanAspire.ClientApp.Pages.Activities.Components
+@using CleanAspire.ClientApp.Services.Activities
+@using CleanAspire.ClientApp.Shared
+@using CleanAspire.ClientApp.DTOs
+
+@inject ActivityServiceProxy ActivityServiceProxy
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>@L["Activities"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <!-- Header -->
+    <MudPaper Class="pa-4 mb-4">
+        <MudStack Row Spacing="0" Justify="Justify.SpaceBetween">
+            <MudStack Row AlignItems="AlignItems.Start">
+                <MudIcon Icon="@Icons.Material.Outlined.Assignment" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle2">@L["Activities Management"]</MudText>
+                    <MudText Typo="Typo.body2">@L["Manage all your activities, tasks, and follow-ups"]</MudText>
+                </MudStack>
+            </MudStack>
+            <MudStack Row Spacing="1">
+                <MudButton Size="Size.Small" OnClick="RefreshData" Disabled="@_loading">
+                    <MudIcon Icon="@Icons.Material.Filled.Refresh" />
+                    <MudText>@L["Refresh"]</MudText>
+                </MudButton>
+                <MudButton Size="Size.Small" OnClick="OpenNewActivityDialog" Color="Color.Primary">
+                    <MudIcon Icon="@Icons.Material.Filled.Add" />
+                    <MudText>@L["New Activity"]</MudText>
+                </MudButton>
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+
+    <!-- Search and Filters -->
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="3">
+                <MudTextField T="string"
+                              ValueChanged="@(s => OnSearch(s))"
+                              Value="@_searchTerm"
+                              Label="@L["Search activities..."]"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudSelect T="ActivityStatus?"
+                            @bind-Value="_filterStatus"
+                            Label="@L["Status"]"
+                            Clearable="true"
+                            OnValueChanged="OnFilterChanged">
+                    <MudSelectItem Value="@((ActivityStatus?)null)">@L["All Statuses"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityStatus.Open">@L["Open"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityStatus.InProgress">@L["In Progress"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityStatus.Completed">@L["Completed"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityStatus.Canceled">@L["Canceled"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityStatus.Deferred">@L["Deferred"]</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudSelect T="ActivityType?"
+                            @bind-Value="_filterType"
+                            Label="@L["Type"]"
+                            Clearable="true"
+                            OnValueChanged="OnFilterChanged">
+                    <MudSelectItem Value="@((ActivityType?)null)">@L["All Types"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityType.Task">@L["Task"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityType.PhoneCall">@L["Phone Call"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityType.Meeting">@L["Meeting"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityType.FollowUp">@L["Follow Up"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityType.Email">@L["Email"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityType.WhatsAppMessage">@L["WhatsApp"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityType.VideoCall">@L["Video Call"]</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2">
+                <MudSelect T="ActivityPriority?"
+                            @bind-Value="_filterPriority"
+                            Label="@L["Priority"]"
+                            Clearable="true"
+                            OnValueChanged="OnFilterChanged">
+                    <MudSelectItem Value="@((ActivityPriority?)null)">@L["All Priorities"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityPriority.Low">@L["Low"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityPriority.Normal">@L["Normal"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityPriority.High">@L["High"]</MudSelectItem>
+                    <MudSelectItem Value="@ActivityPriority.Urgent">@L["Urgent"]</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudDateRangePicker Label="@L["Date Range"]"
+                                    @bind-DateRange="_dateRange"
+                                    Clearable="true"
+                                    OnValueChanged="OnFilterChanged" />
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Data Grid -->
+    <MudPaper Class="pa-4">
+        @if (_loading)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-8">
+                <MudProgressCircular Indeterminate="true" />
+                <MudText Typo="Typo.body2">@L["Loading activities..."]</MudText>
+            </MudStack>
+        }
+        else if (!_activities.Any())
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-8">
+                <MudIcon Icon="@Icons.Material.Outlined.Assignment" Size="Size.Large" />
+                <MudText Typo="Typo.h6">@L["No activities found"]</MudText>
+                <MudText Typo="Typo.body2">@L["Create your first activity to get started"]</MudText>
+                <MudButton Variant="Variant.Outlined" OnClick="OpenNewActivityDialog">
+                    <MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-2" />
+                    @L["Create First Activity"]
+                </MudButton>
+            </MudStack>
+        }
+        else
+        {
+            <MudDataGrid T="ActivityDto"
+                          Dense="true"
+                          Hover="true"
+                          Items="@_activities"
+                          @bind-SelectedItem="_selectedActivity"
+                          RowClick="@(e => EditActivity(e.Item))">
+                <Columns>
+                    <PropertyColumn Title="@L["Subject"]" Property="a => a.Subject">
+                        <CellTemplate>
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.body2" Style="font-weight: 500;">@context.Item.Subject</MudText>
+                                @if (!string.IsNullOrEmpty(context.Item.Description))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Default">
+                                        @(context.Item.Description.Length > 50 ? context.Item.Description.Substring(0, 50) + "..." : context.Item.Description)
+                                    </MudText>
+                                }
+                            </MudStack>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Title="@L["Type"]" Property="a => a.Type">
+                        <CellTemplate>
+                            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@GetActivityIcon(context.Item.Type)" Size="Size.Small" />
+                                <MudText Typo="Typo.body2">@GetActivityTypeLabel(context.Item.Type)</MudText>
+                            </MudStack>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Title="@L["Status"]" Property="a => a.Status">
+                        <CellTemplate>
+                            <MudChip Size="Size.Small"
+                                      Color="@GetStatusColor(context.Item.Status)">
+                                @context.Item.Status.ToString()
+                            </MudChip>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Title="@L["Priority"]" Property="a => a.Priority">
+                        <CellTemplate>
+                            <MudChip Size="Size.Small"
+                                      Color="@GetPriorityColor(context.Item.Priority)">
+                                @context.Item.Priority.ToString()
+                            </MudChip>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Title="@L["Due Date"]" Property="a => a.Due">
+                        <CellTemplate>
+                            @if (context.Item.Due.HasValue)
+                            {
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.body2">@context.Item.Due.Value.ToString("MMM dd, yyyy")</MudText>
+                                    <MudText Typo="Typo.caption">@context.Item.Due.Value.ToString("HH:mm")</MudText>
+                                    @if (context.Item.IsOverdue && context.Item.Status != ActivityStatus.Completed)
+                                    {
+                                        <MudChip Size="Size.Small" Color="Color.Error" T="string">Overdue</MudChip>
+                                    }
+                                </MudStack>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Default">-</MudText>
+                            }
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Title="@L["Assigned To"]" Property="a => a.AssignedToUserName">
+                        <CellTemplate>
+                            @if (!string.IsNullOrEmpty(context.Item.AssignedToUserName))
+                            {
+                                <MudChip Size="Size.Small" Color="Color.Default">
+                                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-1" />
+                                    @context.Item.AssignedToUserName
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Default">-</MudText>
+                            }
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Title="@L["Regarding"]" Property="a => a.RegardingType">
+                        <CellTemplate>
+                            @if (context.Item.RegardingType.HasValue && context.Item.RegardingId.HasValue)
+                            {
+                                <MudChip Size="Size.Small" Color="Color.Primary">
+                                    @context.Item.RegardingType.Value.ToString()
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Default">-</MudText>
+                            }
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <TemplateColumn>
+                        <HeaderTemplate>@L["Actions"]</HeaderTemplate>
+                        <CellTemplate>
+                            <MudStack Row Spacing="1">
+                                @if (context.Item.Status != ActivityStatus.Completed)
+                                {
+                                    <MudIconButton Size="Size.Small"
+                                                  Color="Color.Success"
+                                                  Icon="@Icons.Material.Filled.Check"
+                                                  Title="@L["Complete"]"
+                                                  OnClick="() => CompleteActivity(context.Item)" />
+                                }
+                                <MudIconButton Size="Size.Small"
+                                              Color="Color.Primary"
+                                              Icon="@Icons.Material.Filled.Edit"
+                                              Title="@L["Edit"]"
+                                              OnClick="() => EditActivity(context.Item)" />
+                                <MudIconButton Size="Size.Small"
+                                              Color="Color.Error"
+                                              Icon="@Icons.Material.Filled.Delete"
+                                              Title="@L["Delete"]"
+                                              OnClick="() => DeleteActivity(context.Item)" />
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private bool _loading = false;
+    private string _searchTerm = string.Empty;
+    private ActivityStatus? _filterStatus = null;
+    private ActivityType? _filterType = null;
+    private ActivityPriority? _filterPriority = null;
+    private DateRange? _dateRange = null;
+    private ActivityDto? _selectedActivity;
+    private List<ActivityDto> _activities = new();
+    private List<ActivityDto> _allActivities = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadActivities();
+    }
+
+    private async Task LoadActivities()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ActivityServiceProxy.GetActivitiesWithPaginationAsync(1, 1000);
+            _allActivities = result?.Items?.ToList() ?? new List<ActivityDto>();
+
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(@L["Error loading activities: {0}", ex.Message], Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        var filtered = _allActivities.AsEnumerable();
+
+        // Search filter
+        if (!string.IsNullOrEmpty(_searchTerm))
+        {
+            filtered = filtered.Where(a =>
+                a.Subject.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                a.Description?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
+                a.AssignedToUserName?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) == true
+            );
+        }
+
+        // Status filter
+        if (_filterStatus.HasValue)
+        {
+            filtered = filtered.Where(a => a.Status == _filterStatus.Value);
+        }
+
+        // Type filter
+        if (_filterType.HasValue)
+        {
+            filtered = filtered.Where(a => a.Type == _filterType.Value);
+        }
+
+        // Priority filter
+        if (_filterPriority.HasValue)
+        {
+            filtered = filtered.Where(a => a.Priority == _filterPriority.Value);
+        }
+
+        // Date range filter
+        if (_dateRange?.Start.HasValue == true && _dateRange?.End.HasValue == true)
+        {
+            filtered = filtered.Where(a => a.Due.HasValue &&
+                a.Due.Value.Date >= _dateRange.Start.Value.Date &&
+                a.Due.Value.Date <= _dateRange.End.Value.Date);
+        }
+
+        _activities = filtered.OrderBy(a => a.Due).ThenBy(a => a.Subject).ToList();
+    }
+
+    private async Task OnFilterChanged()
+    {
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private async Task OnSearch(string text)
+    {
+        _searchTerm = text;
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadActivities();
+        Snackbar.Add(@L["Data refreshed"], Severity.Success);
+    }
+
+    private async Task OpenNewActivityDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["IsEdit"] = false
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true
+        };
+
+        var dialog = DialogService.Show<ActivityDialog>(@L["New Activity"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadActivities();
+        }
+    }
+
+    private async Task EditActivity(ActivityDto activity)
+    {
+        var parameters = new DialogParameters
+        {
+            ["IsEdit"] = true,
+            ["Activity"] = activity
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true
+        };
+
+        var dialog = DialogService.Show<ActivityDialog>(@L["Edit Activity"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadActivities();
+        }
+    }
+
+    private async Task CompleteActivity(ActivityDto activity)
+    {
+        var success = await ActivityServiceProxy.CompleteActivityAsync(activity.Id);
+        if (success)
+        {
+            Snackbar.Add(@L["Activity completed successfully"], Severity.Success);
+            await LoadActivities();
+        }
+        else
+        {
+            Snackbar.Add(@L["Failed to complete activity"], Severity.Error);
+        }
+    }
+
+    private async Task DeleteActivity(ActivityDto activity)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Message"] = string.Format(@L["Are you sure you want to delete the activity '{0}'? This action cannot be undone."], activity.Subject)
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+        };
+
+        var dialog = DialogService.Show<DeleteConfirmationDialog>(@L["Delete Activity"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var success = await ActivityServiceProxy.DeleteActivityAsync(activity.Id);
+            if (success)
+            {
+                Snackbar.Add(@L["Activity deleted successfully"], Severity.Success);
+                await LoadActivities();
+            }
+            else
+            {
+                Snackbar.Add(@L["Failed to delete activity"], Severity.Error);
+            }
+        }
+    }
+
+    private string GetActivityIcon(ActivityType type)
+    {
+        return type switch
+        {
+            ActivityType.Task => Icons.Material.Filled.Task,
+            ActivityType.PhoneCall => Icons.Material.Filled.Phone,
+            ActivityType.Email => Icons.Material.Filled.Email,
+            ActivityType.WhatsAppMessage => Icons.Material.Filled.Chat,
+            ActivityType.Meeting => Icons.Material.Filled.Event,
+            ActivityType.VideoCall => Icons.Material.Filled.VideoCall,
+            ActivityType.FollowUp => Icons.Material.Filled.Replay,
+            ActivityType.SMS => Icons.Material.Filled.Sms,
+            ActivityType.InstagramDM => Icons.Material.Filled.Forum,
+            ActivityType.FacebookMessage => Icons.Material.Filled.Forum,
+            ActivityType.LinkedInMessage => Icons.Material.Filled.BusinessCenter,
+            _ => Icons.Material.Filled.Assignment
+        };
+    }
+
+    private Color GetStatusColor(ActivityStatus status)
+    {
+        return status switch
+        {
+            ActivityStatus.Open => Color.Default,
+            ActivityStatus.InProgress => Color.Primary,
+            ActivityStatus.Completed => Color.Success,
+            ActivityStatus.Canceled => Color.Default,
+            ActivityStatus.Deferred => Color.Warning,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetPriorityColor(ActivityPriority priority)
+    {
+        return priority switch
+        {
+            ActivityPriority.Low => Color.Default,
+            ActivityPriority.Normal => Color.Info,
+            ActivityPriority.High => Color.Warning,
+            ActivityPriority.Urgent => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string GetActivityTypeLabel(ActivityType type)
+    {
+        return type switch
+        {
+            ActivityType.PhoneCall => "Phone Call",
+            ActivityType.WhatsAppMessage => "WhatsApp",
+            ActivityType.WhatsAppFlow => "WhatsApp Flow",
+            ActivityType.VideoCall => "Video Call",
+            ActivityType.FollowUp => "Follow Up",
+            ActivityType.InstagramDM => "Instagram DM",
+            ActivityType.FacebookMessage => "Facebook Message",
+            ActivityType.LinkedInMessage => "LinkedIn Message",
+            ActivityType.TwitterDM => "Twitter DM",
+            ActivityType.WebChat => "Web Chat",
+            _ => type.ToString()
+        };
+    }
+}

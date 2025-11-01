@@ -1,42 +1,32 @@
+using CleanAspire.Domain.Common;
 using CleanAspire.Domain.Entities;
 
 namespace CleanAspire.Domain.Events;
 
-/// <summary>
-/// Domain event triggered when a new client is created.
-/// </summary>
+// ✅ Follow CleanAspire pattern: pass full entity
 public class ClientCreatedEvent : DomainEvent
 {
-    public Client Client { get; }
-
-    public ClientCreatedEvent(Client client)
+    public Client Item { get; }
+    public ClientCreatedEvent(Client item)
     {
-        Client = client;
+        Item = item;
     }
 }
 
-/// <summary>
-/// Domain event triggered when a client is updated.
-/// </summary>
 public class ClientUpdatedEvent : DomainEvent
 {
-    public Client Client { get; }
-
-    public ClientUpdatedEvent(Client client)
+    public Client Item { get; }
+    public ClientUpdatedEvent(Client item)
     {
-        Client = client;
+        Item = item;
     }
 }
 
-/// <summary>
-/// Domain event triggered when a client is deleted.
-/// </summary>
 public class ClientDeletedEvent : DomainEvent
 {
-    public Client Client { get; }
-
-    public ClientDeletedEvent(Client client)
+    public Client Item { get; }
+    public ClientDeletedEvent(Client item)
     {
-        Client = client;
+        Item = item;
     }
 }

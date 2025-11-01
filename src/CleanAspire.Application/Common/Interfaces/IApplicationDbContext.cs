@@ -1,4 +1,6 @@
-﻿namespace CleanAspire.Application.Common.Interfaces;
+﻿using CleanAspire.Domain.Entities;
+
+namespace CleanAspire.Application.Common.Interfaces;
 
 /// <summary>
 /// Represents the application database context interface.
@@ -34,6 +36,36 @@ public interface IApplicationDbContext
     /// Gets or sets the Stocks DbSet.
     /// </summary>
     DbSet<Stock> Stocks { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Tags DbSet.
+    /// </summary>
+    DbSet<Tag> Tags { get; set; }
+
+    /// <summary>
+    /// Gets or sets the TagLinks DbSet.
+    /// </summary>
+    DbSet<TagLink> TagLinks { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Notes DbSet.
+    /// </summary>
+    DbSet<Note> Notes { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Attachments DbSet.
+    /// </summary>
+    DbSet<Attachment> Attachments { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Addresses DbSet.
+    /// </summary>
+    DbSet<Address> Addresses { get; set; }
+
+    /// <summary>
+    /// Gets or sets the ChannelIdentities DbSet.
+    /// </summary>
+    DbSet<ChannelIdentity> ChannelIdentities { get; set; }
 
     /// <summary>
     /// Saves all changes made in this context to the database.

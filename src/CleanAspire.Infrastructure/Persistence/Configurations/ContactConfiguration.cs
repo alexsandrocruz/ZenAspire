@@ -13,31 +13,56 @@ public class ContactConfiguration : IEntityTypeConfiguration<Contact>
     {
         // Configurações da tabela
         builder.ToTable("Contacts");
-        
+
         // Chave primária
         builder.HasKey(x => x.Id);
-        
+
+        // ✅ Multi-tenancy: TenantId required
+        builder.Property(x => x.TenantId)
+            .IsRequired()
+            .HasMaxLength(450);
+
+        // ✅ Composite unique index per tenant: (TenantId, Email)
+        builder.HasIndex(x => new { x.TenantId, x.Email })
+            .IsUnique();
+
+        // ✅ Index for tenant queries (performance)
+        builder.HasIndex(x => x.TenantId);
+
+        // ✅ Index for lookup queries
+        builder.HasIndex(x => new { x.TenantId, x.FirstName, x.LastName });
+        builder.HasIndex(x => new { x.TenantId, x.ClientId });
+
         // Propriedades obrigatórias
         builder.Property(x => x.FirstName)
             .IsRequired()
             .HasMaxLength(100);
-            
+
         builder.Property(x => x.LastName)
             .IsRequired()
             .HasMaxLength(100);
-            
+
         builder.Property(x => x.Email)
             .IsRequired()
             .HasMaxLength(150);
-            
+
         builder.Property(x => x.ClientId)
             .IsRequired();
-            
+
+        builder.Property(x => x.LifecycleStage)
+            .IsRequired()
+            .HasMaxLength(32)
+            .HasDefaultValue("Lead");
+
+        // ✅ New CRM fields
+        builder.Property(x => x.Mobile)
+            .HasMaxLength(40);
+
+        builder.Property(x => x.OwnerUserId)
+            .HasMaxLength(450);
+
         // Propriedades opcionais
         builder.Property(x => x.Phone)
-            .HasMaxLength(20);
-            
-        builder.Property(x => x.MobilePhone)
             .HasMaxLength(20);
             
         builder.Property(x => x.JobTitle)
@@ -78,18 +103,17 @@ public class ContactConfiguration : IEntityTypeConfiguration<Contact>
             .HasForeignKey(x => x.ClientId)
             .OnDelete(DeleteBehavior.Cascade);
         
-        // Índices
-        builder.HasIndex(x => x.Email);
-        builder.HasIndex(x => x.ClientId);
-        builder.HasIndex(x => new { x.FirstName, x.LastName });
+        // Índices adicionais
         builder.HasIndex(x => x.Type);
         builder.HasIndex(x => x.Status);
         builder.HasIndex(x => x.IsMainContact);
         builder.HasIndex(x => x.IsDecisionMaker);
-        
+        builder.HasIndex(x => x.LifecycleStage);
+
         // Propriedades ignoradas (calculadas)
         builder.Ignore(x => x.FullName);
         builder.Ignore(x => x.CompanyName);
+        builder.Ignore(x => x.MobilePhone); // ✅ Obsolete alias
         
         // Ignorar eventos de domínio
         builder.Ignore(e => e.DomainEvents);

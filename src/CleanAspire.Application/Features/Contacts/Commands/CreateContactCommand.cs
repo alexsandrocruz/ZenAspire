@@ -15,32 +15,42 @@ public record CreateContactCommand : IFusionCacheRefreshRequest<ContactDto>, IRe
     public string LastName { get; init; } = string.Empty;
     public string Email { get; init; } = string.Empty;
     public string? Phone { get; init; }
-    public string? MobilePhone { get; init; }
+    public string? Mobile { get; init; } // ✅ Replaces MobilePhone
+    [Obsolete("Use Mobile instead")]
+    public string? MobilePhone
+    {
+        get => Mobile;
+        init => Mobile = value;
+    }
     public string? JobTitle { get; init; }
     public string? Department { get; init; }
-    
+
     // Personal Address (optional)
     public string? Address { get; init; }
     public string? City { get; init; }
     public string? State { get; init; }
     public string? PostalCode { get; init; }
-    
+
     public string? Notes { get; init; }
     public string? ContactTags { get; init; }
-    
+
+    // ✅ CRM lifecycle
+    public string LifecycleStage { get; init; } = "Lead";
+    public string? OwnerUserId { get; init; }
+
     // Relationship Information
     public ContactType Type { get; init; } = ContactType.Lead;
     public ContactStatus Status { get; init; } = ContactStatus.Active;
-    
+
     public bool IsMainContact { get; init; } = false;
     public bool IsDecisionMaker { get; init; } = false;
-    
+
     // Important Dates
     public DateTime? BirthDate { get; init; }
-    
+
     // Client Information
     public string ClientId { get; init; } = string.Empty;
-    
+
     public IEnumerable<string>? Tags => new[] { "contacts" };
 }
 
@@ -51,20 +61,29 @@ public record CreateContactCommand : IFusionCacheRefreshRequest<ContactDto>, IRe
 public class CreateContactCommandHandler : IRequestHandler<CreateContactCommand, ContactDto>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUser; // ✅ Inject current user service
 
-    public CreateContactCommandHandler(IApplicationDbContext context)
+    public CreateContactCommandHandler(
+        IApplicationDbContext context,
+        ICurrentUserService currentUser)
     {
         _context = context;
+        _currentUser = currentUser;
     }
 
     public async ValueTask<ContactDto> Handle(CreateContactCommand request, CancellationToken cancellationToken)
     {
+        // ✅ Validate tenant
+        if (string.IsNullOrEmpty(_currentUser.TenantId))
+            throw new UnauthorizedAccessException("TenantId is required");
+
         // Verify that the client exists
         if (string.IsNullOrWhiteSpace(request.ClientId))
         {
             throw new ArgumentException("Client ID cannot be null or empty.", nameof(request.ClientId));
         }
 
+        // ✅ Client lookup will be automatically filtered by TenantId (global query filter)
         var clientExists = await _context.Clients
             .AnyAsync(c => c.Id == request.ClientId, cancellationToken);
 
@@ -75,11 +94,12 @@ public class CreateContactCommandHandler : IRequestHandler<CreateContactCommand,
 
         var contact = new Contact
         {
+            TenantId = _currentUser.TenantId, // ✅ Set TenantId from current user
             FirstName = request.FirstName,
             LastName = request.LastName,
             Email = request.Email,
             Phone = request.Phone,
-            MobilePhone = request.MobilePhone,
+            Mobile = request.Mobile, // ✅ Use Mobile instead of MobilePhone
             JobTitle = request.JobTitle,
             Department = request.Department,
             Address = request.Address,
@@ -88,6 +108,8 @@ public class CreateContactCommandHandler : IRequestHandler<CreateContactCommand,
             PostalCode = request.PostalCode,
             Notes = request.Notes,
             Tags = request.ContactTags,
+            LifecycleStage = request.LifecycleStage, // ✅ New field
+            OwnerUserId = request.OwnerUserId ?? _currentUser.UserId, // ✅ Default to current user
             Type = request.Type,
             Status = request.Status,
             IsMainContact = request.IsMainContact,

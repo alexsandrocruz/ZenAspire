@@ -20,7 +20,8 @@ public class ContactEndpointRegistrar(ILogger<ContactEndpointRegistrar> logger) 
     /// <param name="routes">The route builder to which the endpoints will be added.</param>
     public void RegisterRoutes(IEndpointRouteBuilder routes)
     {
-        var group = routes.MapGroup("/api/contacts").WithTags("contacts"); // .RequireAuthorization(); // TODO: Re-enable authorization after testing
+        // ✅ CRM-aligned route: /api/crm/contacts
+        var group = routes.MapGroup("/api/crm/contacts").WithTags("CRM.Contacts"); // .RequireAuthorization(); // TODO: Re-enable authorization after testing
 
         /// <summary>
         /// Gets all contacts.

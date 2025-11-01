@@ -1,42 +1,32 @@
+using CleanAspire.Domain.Common;
 using CleanAspire.Domain.Entities;
 
 namespace CleanAspire.Domain.Events;
 
-/// <summary>
-/// Domain event triggered when a new contact is created.
-/// </summary>
+// ✅ Follow CleanAspire pattern: pass full entity
 public class ContactCreatedEvent : DomainEvent
 {
-    public Contact Contact { get; }
-
-    public ContactCreatedEvent(Contact contact)
+    public Contact Item { get; }
+    public ContactCreatedEvent(Contact item)
     {
-        Contact = contact;
+        Item = item;
     }
 }
 
-/// <summary>
-/// Domain event triggered when a contact is updated.
-/// </summary>
 public class ContactUpdatedEvent : DomainEvent
 {
-    public Contact Contact { get; }
-
-    public ContactUpdatedEvent(Contact contact)
+    public Contact Item { get; }
+    public ContactUpdatedEvent(Contact item)
     {
-        Contact = contact;
+        Item = item;
     }
 }
 
-/// <summary>
-/// Domain event triggered when a contact is deleted.
-/// </summary>
 public class ContactDeletedEvent : DomainEvent
 {
-    public Contact Contact { get; }
-
-    public ContactDeletedEvent(Contact contact)
+    public Contact Item { get; }
+    public ContactDeletedEvent(Contact item)
     {
-        Contact = contact;
+        Item = item;
     }
 }

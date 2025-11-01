@@ -17,6 +17,167 @@ namespace CleanAspire.Migrators.SQLite.Migrations
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "10.0.0-rc.1.25451.107");
 
+            modelBuilder.Entity("CleanAspire.Domain.Entities.Address", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("City")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Country")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(2)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("BR");
+
+                    b.Property<DateTime?>("Created")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("District")
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<decimal?>("GeoLat")
+                        .HasColumnType("decimal(10,7)");
+
+                    b.Property<decimal?>("GeoLng")
+                        .HasColumnType("decimal(10,7)");
+
+                    b.Property<bool>("IsPrimary")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastModified")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Line1")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Line2")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("OwnerType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Zip")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("GeoLat", "GeoLng")
+                        .HasFilter("\"GeoLat\" IS NOT NULL AND \"GeoLng\" IS NOT NULL");
+
+                    b.HasIndex("TenantId", "OwnerType", "OwnerId");
+
+                    b.HasIndex("TenantId", "OwnerType", "OwnerId", "IsPrimary");
+
+                    b.ToTable("Addresses", (string)null);
+                });
+
+            modelBuilder.Entity("CleanAspire.Domain.Entities.Attachment", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("BlobKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("Created")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FileHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastModified")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("NoteId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<long>("Size")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BlobKey")
+                        .IsUnique();
+
+                    b.HasIndex("NoteId");
+
+                    b.HasIndex("TenantId");
+
+                    b.ToTable("Attachments", (string)null);
+                });
+
             modelBuilder.Entity("CleanAspire.Domain.Entities.AuditTrail", b =>
                 {
                     b.Property<string>("Id")
@@ -66,6 +227,86 @@ namespace CleanAspire.Migrators.SQLite.Migrations
                     b.ToTable("AuditTrails");
                 });
 
+            modelBuilder.Entity("CleanAspire.Domain.Entities.ChannelIdentity", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("Created")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsPrimary")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<string>("Label")
+                        .HasMaxLength(50)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastModified")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("OptedIn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
+                    b.Property<DateTime?>("OptedInAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("OwnerType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasMaxLength(256)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("VerifiedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "VerifiedAt")
+                        .HasFilter("\"VerifiedAt\" IS NOT NULL");
+
+                    b.HasIndex("TenantId", "OwnerType", "OwnerId");
+
+                    b.HasIndex("TenantId", "Type", "Value");
+
+                    b.HasIndex("TenantId", "OwnerType", "OwnerId", "Type", "IsPrimary");
+
+                    b.HasIndex("TenantId", "OwnerType", "OwnerId", "Type", "Value")
+                        .IsUnique();
+
+                    b.ToTable("ChannelIdentities", (string)null);
+                });
+
             modelBuilder.Entity("CleanAspire.Domain.Entities.Client", b =>
                 {
                     b.Property<string>("Id")
@@ -94,10 +335,6 @@ namespace CleanAspire.Migrators.SQLite.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("DocumentNumber")
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
-
                     b.Property<string>("Email")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
@@ -122,6 +359,17 @@ namespace CleanAspire.Migrators.SQLite.Migrations
                         .HasMaxLength(450)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("LegalName")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LifecycleStage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Lead");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(200)
@@ -129,6 +377,10 @@ namespace CleanAspire.Migrators.SQLite.Migrations
 
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerUserId")
+                        .HasMaxLength(450)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Phone")
@@ -157,6 +409,15 @@ namespace CleanAspire.Migrators.SQLite.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("TaxId")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("TradeName")
                         .HasMaxLength(50)
                         .HasColumnType("TEXT");
@@ -170,15 +431,21 @@ namespace CleanAspire.Migrators.SQLite.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("DocumentNumber");
-
-                    b.HasIndex("Email");
-
-                    b.HasIndex("Name");
+                    b.HasIndex("LifecycleStage");
 
                     b.HasIndex("Status");
 
+                    b.HasIndex("TenantId");
+
                     b.HasIndex("Type");
+
+                    b.HasIndex("TenantId", "Email");
+
+                    b.HasIndex("TenantId", "Name");
+
+                    b.HasIndex("TenantId", "TaxId")
+                        .IsUnique()
+                        .HasFilter("\"TaxId\" IS NOT NULL");
 
                     b.ToTable("Clients", (string)null);
                 });
@@ -186,6 +453,10 @@ namespace CleanAspire.Migrators.SQLite.Migrations
             modelBuilder.Entity("CleanAspire.Domain.Entities.Contact", b =>
                 {
                     b.Property<string>("Id")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("AccountId")
                         .HasMaxLength(450)
                         .HasColumnType("TEXT");
 
@@ -251,12 +522,23 @@ namespace CleanAspire.Migrators.SQLite.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("MobilePhone")
-                        .HasMaxLength(20)
+                    b.Property<string>("LifecycleStage")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasDefaultValue("Lead");
+
+                    b.Property<string>("Mobile")
+                        .HasMaxLength(40)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Notes")
                         .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerUserId")
+                        .HasMaxLength(450)
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Phone")
@@ -278,6 +560,11 @@ namespace CleanAspire.Migrators.SQLite.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Type")
                         .HasColumnType("INTEGER");
 
@@ -285,19 +572,89 @@ namespace CleanAspire.Migrators.SQLite.Migrations
 
                     b.HasIndex("ClientId");
 
-                    b.HasIndex("Email");
-
                     b.HasIndex("IsDecisionMaker");
 
                     b.HasIndex("IsMainContact");
 
+                    b.HasIndex("LifecycleStage");
+
                     b.HasIndex("Status");
+
+                    b.HasIndex("TenantId");
 
                     b.HasIndex("Type");
 
-                    b.HasIndex("FirstName", "LastName");
+                    b.HasIndex("TenantId", "ClientId");
+
+                    b.HasIndex("TenantId", "Email")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "FirstName", "LastName");
 
                     b.ToTable("Contacts", (string)null);
+                });
+
+            modelBuilder.Entity("CleanAspire.Domain.Entities.Note", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("Created")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("IsPinned")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<bool>("IsPrivate")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(false);
+
+                    b.Property<DateTime?>("LastModified")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("OwnerType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Title")
+                        .HasMaxLength(200)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "OwnerType", "OwnerId");
+
+                    b.HasIndex("TenantId", "OwnerType", "OwnerId", "IsPinned");
+
+                    b.ToTable("Notes", (string)null);
                 });
 
             modelBuilder.Entity("CleanAspire.Domain.Entities.Product", b =>
@@ -395,6 +752,99 @@ namespace CleanAspire.Migrators.SQLite.Migrations
                     b.HasIndex("ProductId");
 
                     b.ToTable("Stocks");
+                });
+
+            modelBuilder.Entity("CleanAspire.Domain.Entities.Tag", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Color")
+                        .HasMaxLength(7)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("Created")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(500)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastModified")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastModifiedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("TenantId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Tags", (string)null);
+                });
+
+            modelBuilder.Entity("CleanAspire.Domain.Entities.TagLink", b =>
+                {
+                    b.Property<string>("Id")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("LinkedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LinkedBy")
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("OwnerId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("OwnerType")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("TagId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("TenantId")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TagId");
+
+                    b.HasIndex("TenantId");
+
+                    b.HasIndex("OwnerType", "OwnerId");
+
+                    b.HasIndex("TenantId", "TagId", "OwnerType", "OwnerId")
+                        .IsUnique();
+
+                    b.ToTable("TagLinks", (string)null);
                 });
 
             modelBuilder.Entity("CleanAspire.Domain.Entities.Tenant", b =>
@@ -686,6 +1136,17 @@ namespace CleanAspire.Migrators.SQLite.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("CleanAspire.Domain.Entities.Attachment", b =>
+                {
+                    b.HasOne("CleanAspire.Domain.Entities.Note", "Note")
+                        .WithMany("Attachments")
+                        .HasForeignKey("NoteId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Note");
+                });
+
             modelBuilder.Entity("CleanAspire.Domain.Entities.AuditTrail", b =>
                 {
                     b.HasOne("CleanAspire.Domain.Identities.ApplicationUser", "Owner")
@@ -716,6 +1177,17 @@ namespace CleanAspire.Migrators.SQLite.Migrations
                         .IsRequired();
 
                     b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("CleanAspire.Domain.Entities.TagLink", b =>
+                {
+                    b.HasOne("CleanAspire.Domain.Entities.Tag", "Tag")
+                        .WithMany("TagLinks")
+                        .HasForeignKey("TagId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Tag");
                 });
 
             modelBuilder.Entity("CleanAspire.Domain.Identities.ApplicationUser", b =>
@@ -781,6 +1253,16 @@ namespace CleanAspire.Migrators.SQLite.Migrations
             modelBuilder.Entity("CleanAspire.Domain.Entities.Client", b =>
                 {
                     b.Navigation("Contacts");
+                });
+
+            modelBuilder.Entity("CleanAspire.Domain.Entities.Note", b =>
+                {
+                    b.Navigation("Attachments");
+                });
+
+            modelBuilder.Entity("CleanAspire.Domain.Entities.Tag", b =>
+                {
+                    b.Navigation("TagLinks");
                 });
 #pragma warning restore 612, 618
         }

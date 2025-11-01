@@ -44,7 +44,10 @@ public static class DependencyInjection
             .AddDatabase(configuration)
             .AddFusionCacheService()
             .AddScoped<IUploadService, MinioUploadService>();
- 
+
+        // ✅ Register ICurrentUserService for multi-tenancy
+        services.AddHttpContextAccessor();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
 
         return services;
     }

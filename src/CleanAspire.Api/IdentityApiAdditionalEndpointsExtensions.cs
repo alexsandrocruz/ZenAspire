@@ -401,6 +401,16 @@ public static class IdentityApiAdditionalEndpointsExtensions
                     await userManager.AddLoginAsync(user, new UserLoginInfo("Google", validatedUser.Subject, "Google"));
                 }
 
+                // Add tenant claim to user
+                if (user is ApplicationUser appUserForClaim)
+                {
+                    await userManager.AddClaimAsync(user, new Claim("tenant", appUserForClaim.TenantId ?? "host"));
+                }
+                else
+                {
+                    await userManager.AddClaimAsync(user, new Claim("tenant", "host"));
+                }
+
                 signInManager.AuthenticationScheme = IdentityConstants.ApplicationScheme;
                 var loginResult = await signInManager.ExternalLoginSignInAsync("Google", validatedUser.Subject, isPersistent: false);
                 if (!loginResult.Succeeded)
@@ -595,6 +605,16 @@ public static class IdentityApiAdditionalEndpointsExtensions
                 {
                     var userId= await userManager.GetUserIdAsync(user);
                     await userManager.AddLoginAsync(user, new UserLoginInfo("Microsoft", oid, "Microsoft"));
+                }
+
+                // Add tenant claim to user
+                if (user is ApplicationUser appUserForClaim)
+                {
+                    await userManager.AddClaimAsync(user, new Claim("tenant", appUserForClaim.TenantId ?? "host"));
+                }
+                else
+                {
+                    await userManager.AddClaimAsync(user, new Claim("tenant", "host"));
                 }
 
                 signInManager.AuthenticationScheme = IdentityConstants.ApplicationScheme;

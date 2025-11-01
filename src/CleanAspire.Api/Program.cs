@@ -11,6 +11,7 @@ using Microsoft.OpenApi;
 using CleanAspire.Api.Identity;
 using Microsoft.Extensions.FileProviders;
 using CleanAspire.Api.Endpoints;
+using CleanAspire.Api.Middleware;
 using CleanAspire.Infrastructure.Configurations;
 using Microsoft.AspNetCore.Http.Features;
 using CleanAspire.Api.ExceptionHandlers;
@@ -108,6 +109,7 @@ app.UseExceptionHandler();
 app.MapEndpointDefinitions();
 app.UseCors("wasm");
 app.UseAntiforgery();
+app.UseMiddleware<TenantValidationMiddleware>();
 app.Use(async (context, next) =>
 {
     var currentUserContextSetter = context.RequestServices.GetRequiredService<ICurrentUserContextSetter>();

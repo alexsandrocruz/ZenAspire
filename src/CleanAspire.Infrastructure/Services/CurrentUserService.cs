@@ -6,6 +6,7 @@ namespace CleanAspire.Infrastructure.Services;
 
 /// <summary>
 /// Implementation of ICurrentUserService that reads from HTTP context claims.
+/// No fallback tenant - requires authentication.
 /// </summary>
 public class CurrentUserService : ICurrentUserService
 {

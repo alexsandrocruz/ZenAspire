@@ -21,7 +21,7 @@ public class ClientEndpointRegistrar(ILogger<ClientEndpointRegistrar> logger) : 
     public void RegisterRoutes(IEndpointRouteBuilder routes)
     {
         // ✅ CRM-aligned route: /api/crm/clients
-        var group = routes.MapGroup("/api/crm/clients").WithTags("CRM.Clients"); // .RequireAuthorization(); // TODO: Re-enable authorization after testing
+        var group = routes.MapGroup("/api/crm/clients").WithTags("CRM.Clients").RequireAuthorization();
 
         /// <summary>
         /// Gets all clients.

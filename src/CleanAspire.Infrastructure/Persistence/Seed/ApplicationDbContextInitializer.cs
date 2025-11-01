@@ -59,6 +59,12 @@ public class ApplicationDbContextInitializer
             {
                 new()
                 {
+                    Name = "Host",
+                    Description = "Default host tenant for system administration",
+                    Id = "host" // Fixed ID for the host tenant
+                },
+                new()
+                {
                     Name = "Org - 1",
                     Description = "Organization 1",
                     Id = Guid.CreateVersion7().ToString()
@@ -75,14 +81,22 @@ public class ApplicationDbContextInitializer
         }
 
         if (await _userManager.Users.AnyAsync()) return;
-        var tenantId = _context.Tenants.First().Id;
+
+        // Get the host tenant for the admin user
+        var hostTenant = await _context.Tenants.FirstOrDefaultAsync(t => t.Id == "host");
+        if (hostTenant == null)
+        {
+            _logger.LogWarning("Host tenant not found. Skipping user seeding.");
+            return;
+        }
+
         var defaultPassword = "P@ssw0rd!";
         _logger.LogInformation("Seeding users...");
         var adminUser = new ApplicationUser
         {
             UserName = "Administrator",
             Provider = "Local",
-            TenantId = tenantId,
+            TenantId = hostTenant.Id, // Admin belongs to host tenant
             Nickname = "Administrator",
             Email = "admin@example.com",
             EmailConfirmed = true,
@@ -95,7 +109,7 @@ public class ApplicationDbContextInitializer
         {
             UserName = "Demo",
             Provider = "Local",
-            TenantId = tenantId,
+            TenantId = hostTenant.Id, // Demo user also belongs to host tenant
             Nickname = "Demo",
             Email = "Demo@example.com",
             EmailConfirmed = true,
@@ -218,11 +232,11 @@ public class ApplicationDbContextInitializer
 
         _logger.LogInformation("Seeding clients and contacts...");
 
-        // Get the first tenant to associate with clients
-        var tenantId = await _context.Tenants.Select(t => t.Id).FirstOrDefaultAsync();
-        if (string.IsNullOrEmpty(tenantId))
+        // Get the host tenant to associate with clients
+        var hostTenant = await _context.Tenants.FirstOrDefaultAsync(t => t.Id == "host");
+        if (hostTenant == null)
         {
-            _logger.LogWarning("No tenant found. Skipping client seeding.");
+            _logger.LogWarning("Host tenant not found. Skipping client seeding.");
             return;
         }
 
@@ -230,7 +244,7 @@ public class ApplicationDbContextInitializer
         {
             new Client
             {
-                TenantId = tenantId,
+                TenantId = hostTenant.Id,
                 Name = "Acme Corporation",
                 Type = ClientType.Company,
                 Status = ClientStatus.Active,
@@ -244,7 +258,7 @@ public class ApplicationDbContextInitializer
             },
             new Client
             {
-                TenantId = tenantId,
+                TenantId = hostTenant.Id,
                 Name = "TechStart Innovations",
                 Type = ClientType.Company,
                 Status = ClientStatus.Active,
@@ -258,7 +272,7 @@ public class ApplicationDbContextInitializer
             },
             new Client
             {
-                TenantId = tenantId,
+                TenantId = hostTenant.Id,
                 Name = "Global Retail Inc",
                 Type = ClientType.Company,
                 Status = ClientStatus.Active,
@@ -280,7 +294,7 @@ public class ApplicationDbContextInitializer
         {
             new Contact
             {
-                TenantId = tenantId,
+                TenantId = hostTenant.Id,
                 FirstName = "John",
                 LastName = "Smith",
                 Email = "john.smith@acme.com",
@@ -294,7 +308,7 @@ public class ApplicationDbContextInitializer
             },
             new Contact
             {
-                TenantId = tenantId,
+                TenantId = hostTenant.Id,
                 FirstName = "Sarah",
                 LastName = "Johnson",
                 Email = "sarah.johnson@acme.com",
@@ -307,7 +321,7 @@ public class ApplicationDbContextInitializer
             },
             new Contact
             {
-                TenantId = tenantId,
+                TenantId = hostTenant.Id,
                 FirstName = "Michael",
                 LastName = "Chen",
                 Email = "michael.chen@techstart.com",
@@ -321,7 +335,7 @@ public class ApplicationDbContextInitializer
             },
             new Contact
             {
-                TenantId = tenantId,
+                TenantId = hostTenant.Id,
                 FirstName = "Emily",
                 LastName = "Davis",
                 Email = "emily.davis@globalretail.com",

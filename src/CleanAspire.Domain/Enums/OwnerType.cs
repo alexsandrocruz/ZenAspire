@@ -38,5 +38,20 @@ public enum OwnerType
     /// <summary>
     /// Case/Ticket entity (future)
     /// </summary>
-    Case = 6
+    Case = 6,
+
+    /// <summary>
+    /// Lead entity (future)
+    /// </summary>
+    Lead = 7,
+
+    /// <summary>
+    /// Campaign entity (future)
+    /// </summary>
+    Campaign = 8,
+
+    /// <summary>
+    /// Interaction entity (for nested references)
+    /// </summary>
+    Interaction = 9
 }

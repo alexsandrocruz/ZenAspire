@@ -68,6 +68,18 @@ public interface IApplicationDbContext
     DbSet<ChannelIdentity> ChannelIdentities { get; set; }
 
     /// <summary>
+    /// Gets or sets the Activities DbSet.
+    /// Phase 3: Timeline - Activities & Interactions
+    /// </summary>
+    DbSet<Activity> Activities { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Interactions DbSet.
+    /// Phase 3: Timeline - Activities & Interactions
+    /// </summary>
+    DbSet<Interaction> Interactions { get; set; }
+
+    /// <summary>
     /// Saves all changes made in this context to the database.
     /// </summary>
     /// <param name="cancellationToken">A CancellationToken to observe while waiting for the task to complete.</param>

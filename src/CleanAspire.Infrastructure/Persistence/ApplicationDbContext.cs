@@ -89,6 +89,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<ChannelIdentity> ChannelIdentities { get; set; }
 
     /// <summary>
+    /// Gets or sets the Activities DbSet.
+    /// Phase 3: Timeline - Activities & Interactions
+    /// </summary>
+    public DbSet<Activity> Activities { get; set; }
+
+    /// <summary>
+    /// Gets or sets the Interactions DbSet.
+    /// Phase 3: Timeline - Activities & Interactions
+    /// </summary>
+    public DbSet<Interaction> Interactions { get; set; }
+
+    /// <summary>
     /// Configures the schema needed for the identity framework.
     /// </summary>
     /// <param name="builder">The builder being used to construct the model for this context.</param>
@@ -124,6 +136,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
                 e.TenantId == _currentUserService.TenantId);
 
             builder.Entity<ChannelIdentity>().HasQueryFilter(e =>
+                e.TenantId == _currentUserService.TenantId);
+
+            // ✅ Phase 3: Timeline - Activities & Interactions
+            builder.Entity<Activity>().HasQueryFilter(e =>
+                e.TenantId == _currentUserService.TenantId);
+
+            builder.Entity<Interaction>().HasQueryFilter(e =>
                 e.TenantId == _currentUserService.TenantId);
         }
     }

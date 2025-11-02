@@ -19,7 +19,7 @@ public class ActivityServiceProxy
     /// Get activities with pagination
     /// </summary>
     public async Task<PaginatedResult<ActivityDto>?> GetActivitiesWithPaginationAsync(
-        int pageNumber = 1,
+        int pageNumber = 0,
         int pageSize = 10,
         string? searchTerm = null,
         ActivityStatus? status = null,
@@ -32,38 +32,23 @@ public class ActivityServiceProxy
     {
         try
         {
-            var queryParams = new List<string>
+            var query = new
             {
-                $"pageNumber={pageNumber}",
-                $"pageSize={pageSize}"
+                Keywords = searchTerm ?? "",
+                PageNumber = pageNumber,
+                PageSize = pageSize,
+                OrderBy = "Start",
+                SortDirection = "Descending",
+                FilterByStatus = status,
+                FilterByType = type,
+                FilterByPriority = priority,
+                FilterByRegardingType = regardingType,
+                FilterByRegardingId = regardingId,
+                FilterStartFrom = startDate,
+                FilterStartTo = endDate
             };
 
-            if (!string.IsNullOrEmpty(searchTerm))
-                queryParams.Add($"searchTerm={Uri.EscapeDataString(searchTerm)}");
-
-            if (status.HasValue)
-                queryParams.Add($"status={status.Value}");
-
-            if (type.HasValue)
-                queryParams.Add($"type={type.Value}");
-
-            if (priority.HasValue)
-                queryParams.Add($"priority={priority.Value}");
-
-            if (startDate.HasValue)
-                queryParams.Add($"startDate={startDate.Value:yyyy-MM-dd}");
-
-            if (endDate.HasValue)
-                queryParams.Add($"endDate={endDate.Value:yyyy-MM-dd}");
-
-            if (regardingType.HasValue)
-                queryParams.Add($"regardingType={regardingType.Value}");
-
-            if (regardingId.HasValue)
-                queryParams.Add($"regardingId={regardingId.Value}");
-
-            var url = $"/api/crm/activities/search?{string.Join("&", queryParams)}";
-            var response = await _httpClient.GetAsync(url);
+            var response = await _httpClient.PostAsJsonAsync("/api/crm/activities/search", query);
 
             if (!response.IsSuccessStatusCode)
             {

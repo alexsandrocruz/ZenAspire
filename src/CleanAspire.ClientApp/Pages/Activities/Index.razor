@@ -52,12 +52,12 @@
                             Label="@L["Status"]"
                             Clearable="true"
                             OnValueChanged="OnFilterChanged">
-                    <MudSelectItem Value="@((ActivityStatus?)null)">@L["All Statuses"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityStatus.Open">@L["Open"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityStatus.InProgress">@L["In Progress"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityStatus.Completed">@L["Completed"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityStatus.Canceled">@L["Canceled"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityStatus.Deferred">@L["Deferred"]</MudSelectItem>
+                    <MudSelectItem T="ActivityStatus?" Value="@((ActivityStatus?)null)">@L["All Statuses"]</MudSelectItem>
+                    <MudSelectItem T="ActivityStatus?" Value="@ActivityStatus.Open">@L["Open"]</MudSelectItem>
+                    <MudSelectItem T="ActivityStatus?" Value="@ActivityStatus.InProgress">@L["In Progress"]</MudSelectItem>
+                    <MudSelectItem T="ActivityStatus?" Value="@ActivityStatus.Completed">@L["Completed"]</MudSelectItem>
+                    <MudSelectItem T="ActivityStatus?" Value="@ActivityStatus.Canceled">@L["Canceled"]</MudSelectItem>
+                    <MudSelectItem T="ActivityStatus?" Value="@ActivityStatus.Deferred">@L["Deferred"]</MudSelectItem>
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="2">
@@ -66,27 +66,27 @@
                             Label="@L["Type"]"
                             Clearable="true"
                             OnValueChanged="OnFilterChanged">
-                    <MudSelectItem Value="@((ActivityType?)null)">@L["All Types"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityType.Task">@L["Task"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityType.PhoneCall">@L["Phone Call"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityType.Meeting">@L["Meeting"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityType.FollowUp">@L["Follow Up"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityType.Email">@L["Email"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityType.WhatsAppMessage">@L["WhatsApp"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityType.VideoCall">@L["Video Call"]</MudSelectItem>
+                    <MudSelectItem T="ActivityType?" Value="@((ActivityType?)null)">@L["All Types"]</MudSelectItem>
+                    <MudSelectItem T="ActivityType?" Value="@ActivityType.Task">@L["Task"]</MudSelectItem>
+                    <MudSelectItem T="ActivityType?" Value="@ActivityType.PhoneCall">@L["Phone Call"]</MudSelectItem>
+                    <MudSelectItem T="ActivityType?" Value="@ActivityType.Meeting">@L["Meeting"]</MudSelectItem>
+                    <MudSelectItem T="ActivityType?" Value="@ActivityType.FollowUp">@L["Follow Up"]</MudSelectItem>
+                    <MudSelectItem T="ActivityType?" Value="@ActivityType.Email">@L["Email"]</MudSelectItem>
+                    <MudSelectItem T="ActivityType?" Value="@ActivityType.WhatsAppMessage">@L["WhatsApp"]</MudSelectItem>
+                    <MudSelectItem T="ActivityType?" Value="@ActivityType.VideoCall">@L["Video Call"]</MudSelectItem>
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="2">
-                <MudSelect T="ActivityPriority?"
-                            @bind-Value="_filterPriority"
+                <MudSelect T="string"
+                            @bind-Value="_filterPriorityString"
                             Label="@L["Priority"]"
                             Clearable="true"
                             OnValueChanged="OnFilterChanged">
-                    <MudSelectItem Value="@((ActivityPriority?)null)">@L["All Priorities"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityPriority.Low">@L["Low"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityPriority.Normal">@L["Normal"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityPriority.High">@L["High"]</MudSelectItem>
-                    <MudSelectItem Value="@ActivityPriority.Urgent">@L["Urgent"]</MudSelectItem>
+                    <MudSelectItem Value="@("0")">@L["All Priorities"]</MudSelectItem>
+                    <MudSelectItem Value="@("1")">@L["Low"]</MudSelectItem>
+                    <MudSelectItem Value="@("2")">@L["Normal"]</MudSelectItem>
+                    <MudSelectItem Value="@("3")">@L["High"]</MudSelectItem>
+                    <MudSelectItem Value="@("4")">@L["Urgent"]</MudSelectItem>
                 </MudSelect>
             </MudItem>
             <MudItem xs="12" md="3">
@@ -250,6 +250,7 @@
     private ActivityStatus? _filterStatus = null;
     private ActivityType? _filterType = null;
     private ActivityPriority? _filterPriority = null;
+    private string _filterPriorityString = "0"; // 0 = all priorities
     private DateRange? _dateRange = null;
     private ActivityDto? _selectedActivity;
     private List<ActivityDto> _activities = new();
@@ -267,7 +268,7 @@
 
         try
         {
-            var result = await ActivityServiceProxy.GetActivitiesWithPaginationAsync(1, 1000);
+            var result = await ActivityServiceProxy.GetActivitiesWithPaginationAsync(0, 1000);
             _allActivities = result?.Items?.ToList() ?? new List<ActivityDto>();
 
             ApplyFilters();
@@ -310,9 +311,10 @@
         }
 
         // Priority filter
-        if (_filterPriority.HasValue)
+        if (!string.IsNullOrEmpty(_filterPriorityString) && _filterPriorityString != "0" && int.TryParse(_filterPriorityString, out var priorityValue))
         {
-            filtered = filtered.Where(a => a.Priority == _filterPriority.Value);
+            var priorityEnum = (ActivityPriority)priorityValue;
+            filtered = filtered.Where(a => a.Priority == priorityEnum);
         }
 
         // Date range filter

@@ -19,7 +19,7 @@
                            Variant="Variant.Outlined">
                     @foreach (ActivityType type in Enum.GetValues(typeof(ActivityType)))
                     {
-                        <MudSelectItem Value="@type">
+                        <MudSelectItem T="ActivityType" Value="@type">
                             <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
                                 <MudIcon Icon="@GetActivityIcon(type)" Size="Size.Small" />
                                 <MudText>@GetActivityTypeName(type)</MudText>
@@ -41,30 +41,31 @@
                 <!-- Priority and Status -->
                 <MudGrid Spacing="2">
                     <MudItem xs="12" md="6">
-                        <MudSelect T="ActivityPriority"
-                                   @bind-Value="_model.Priority"
+                        <MudSelect T="string"
+                                   @bind-Value="_priorityString"
                                    Label="Priority *"
                                    Required="true"
-                                   Variant="Variant.Outlined">
-                            <MudSelectItem Value="ActivityPriority.Low">
+                                   Variant="Variant.Outlined"
+                                   @bind-Value:after="OnPriorityChanged">
+                            <MudSelectItem Value="1">
                                 <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
                                     <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowDown" Color="Color.Info" Size="Size.Small" />
                                     <MudText>Low</MudText>
                                 </MudStack>
                             </MudSelectItem>
-                            <MudSelectItem Value="ActivityPriority.Normal">
+                            <MudSelectItem Value="2">
                                 <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
                                     <MudIcon Icon="@Icons.Material.Filled.Remove" Color="Color.Default" Size="Size.Small" />
                                     <MudText>Normal</MudText>
                                 </MudStack>
                             </MudSelectItem>
-                            <MudSelectItem Value="ActivityPriority.High">
+                            <MudSelectItem Value="3">
                                 <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
                                     <MudIcon Icon="@Icons.Material.Filled.KeyboardArrowUp" Color="Color.Warning" Size="Size.Small" />
                                     <MudText>High</MudText>
                                 </MudStack>
                             </MudSelectItem>
-                            <MudSelectItem Value="ActivityPriority.Urgent">
+                            <MudSelectItem Value="4">
                                 <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
                                     <MudIcon Icon="@Icons.Material.Filled.PriorityHigh" Color="Color.Error" Size="Size.Small" />
                                     <MudText>Urgent</MudText>
@@ -78,11 +79,11 @@
                                    Label="Status *"
                                    Required="true"
                                    Variant="Variant.Outlined">
-                            <MudSelectItem Value="ActivityStatus.Open">Open</MudSelectItem>
-                            <MudSelectItem Value="ActivityStatus.InProgress">In Progress</MudSelectItem>
-                            <MudSelectItem Value="ActivityStatus.Completed">Completed</MudSelectItem>
-                            <MudSelectItem Value="ActivityStatus.Canceled">Canceled</MudSelectItem>
-                            <MudSelectItem Value="ActivityStatus.Deferred">Deferred</MudSelectItem>
+                            <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Open">Open</MudSelectItem>
+                            <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.InProgress">In Progress</MudSelectItem>
+                            <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Completed">Completed</MudSelectItem>
+                            <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Canceled">Canceled</MudSelectItem>
+                            <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Deferred">Deferred</MudSelectItem>
                         </MudSelect>
                     </MudItem>
                 </MudGrid>
@@ -243,6 +244,7 @@
     private TimeSpan? _dueTime;
     private DateTime? _reminderDate;
     private TimeSpan? _reminderTime;
+    private string _priorityString = "2"; // Default to Normal
 
     protected override void OnInitialized()
     {
@@ -262,6 +264,9 @@
                 RegardingType = Activity.RegardingType,
                 RegardingId = Activity.RegardingId
             };
+
+            // Initialize priority string
+            _priorityString = ((int)Activity.Priority).ToString();
 
             // Split Start into date and time
             _startDate = Activity.Start.Date;
@@ -361,6 +366,14 @@
     /// <summary>
     /// Cancels the dialog
     /// </summary>
+    private void OnPriorityChanged()
+    {
+        if (int.TryParse(_priorityString, out var priorityValue))
+        {
+            _model.Priority = (ActivityPriority)priorityValue;
+        }
+    }
+
     private void Cancel()
     {
         MudDialog.Cancel();

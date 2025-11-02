@@ -27,44 +27,45 @@
                                Label="Type"
                                Required="true"
                                Variant="Variant.Outlined">
-                        <MudSelectItem Value="@ActivityType.Task">Task</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.PhoneCall">Phone Call</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.Meeting">Meeting</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.FollowUp">Follow Up</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.Email">Email</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.WhatsAppMessage">WhatsApp Message</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.WhatsAppFlow">WhatsApp Flow</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.SMS">SMS</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.InstagramDM">Instagram DM</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.FacebookMessage">Facebook Message</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.LinkedInMessage">LinkedIn Message</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.TwitterDM">Twitter DM</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.VideoCall">Video Call</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.WebChat">Web Chat</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.Chatbot">Chatbot</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.Event">Event</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.Webinar">Webinar</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.Presentation">Presentation</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.Workshop">Workshop</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.Newsletter">Newsletter</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.Campaign">Campaign</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.Survey">Survey</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.Note">Note</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.Document">Document</MudSelectItem>
-                        <MudSelectItem Value="@ActivityType.Other">Other</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Task">Task</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.PhoneCall">Phone Call</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Meeting">Meeting</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.FollowUp">Follow Up</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Email">Email</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.WhatsAppMessage">WhatsApp Message</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.WhatsAppFlow">WhatsApp Flow</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.SMS">SMS</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.InstagramDM">Instagram DM</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.FacebookMessage">Facebook Message</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.LinkedInMessage">LinkedIn Message</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.TwitterDM">Twitter DM</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.VideoCall">Video Call</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.WebChat">Web Chat</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Chatbot">Chatbot</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Event">Event</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Webinar">Webinar</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Presentation">Presentation</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Workshop">Workshop</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Newsletter">Newsletter</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Campaign">Campaign</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Survey">Survey</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Note">Note</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Document">Document</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Other">Other</MudSelectItem>
                     </MudSelect>
                 </MudItem>
 
                 <MudItem xs="12" md="6">
-                    <MudSelect T="ActivityPriority"
-                               @bind-Value="_model.Priority"
+                    <MudSelect T="string"
+                               @bind-Value="_priorityString"
                                Label="Priority"
                                Required="true"
-                               Variant="Variant.Outlined">
-                        <MudSelectItem Value="@ActivityPriority.Low">Low</MudSelectItem>
-                        <MudSelectItem Value="@ActivityPriority.Normal">Normal</MudSelectItem>
-                        <MudSelectItem Value="@ActivityPriority.High">High</MudSelectItem>
-                        <MudSelectItem Value="@ActivityPriority.Urgent">Urgent</MudSelectItem>
+                               Variant="Variant.Outlined"
+                               @bind-Value:after="OnPriorityChanged">
+                        <MudSelectItem Value="1">Low</MudSelectItem>
+                        <MudSelectItem Value="2">Normal</MudSelectItem>
+                        <MudSelectItem Value="3">High</MudSelectItem>
+                        <MudSelectItem Value="4">Urgent</MudSelectItem>
                     </MudSelect>
                 </MudItem>
 
@@ -75,11 +76,11 @@
                                Label="Status"
                                Required="true"
                                Variant="Variant.Outlined">
-                        <MudSelectItem Value="@ActivityStatus.Open">Open</MudSelectItem>
-                        <MudSelectItem Value="@ActivityStatus.InProgress">In Progress</MudSelectItem>
-                        <MudSelectItem Value="@ActivityStatus.Completed">Completed</MudSelectItem>
-                        <MudSelectItem Value="@ActivityStatus.Canceled">Canceled</MudSelectItem>
-                        <MudSelectItem Value="@ActivityStatus.Deferred">Deferred</MudSelectItem>
+                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Open">Open</MudSelectItem>
+                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.InProgress">In Progress</MudSelectItem>
+                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Completed">Completed</MudSelectItem>
+                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Canceled">Canceled</MudSelectItem>
+                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Deferred">Deferred</MudSelectItem>
                     </MudSelect>
                 </MudItem>
 
@@ -197,6 +198,7 @@
     private DateTime? _dueDate;
     private DateTime? _reminderDate;
     private string _regardingIdString = string.Empty;
+    private string _priorityString = "2"; // Default to Normal
 
     protected override void OnInitialized()
     {
@@ -224,6 +226,7 @@
             _dueDate = Activity.Due;
             _reminderDate = Activity.ReminderAt;
             _regardingIdString = Activity.RegardingId?.ToString() ?? string.Empty;
+            _priorityString = ((int)Activity.Priority).ToString();
         }
         else
         {
@@ -332,6 +335,14 @@
         {
             _saving = false;
             StateHasChanged();
+        }
+    }
+
+    private void OnPriorityChanged()
+    {
+        if (int.TryParse(_priorityString, out var priorityValue))
+        {
+            _model.Priority = (ActivityPriority)priorityValue;
         }
     }
 

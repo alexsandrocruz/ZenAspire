@@ -126,7 +126,7 @@
                           Hover="true"
                           Items="@_activities"
                           @bind-SelectedItem="_selectedActivity"
-                          RowClick="@(e => EditActivity(e.Item))">
+                          RowClick="@(e => ViewActivityDetails(e.Item))">
                 <Columns>
                     <PropertyColumn Title="@L["Subject"]" Property="a => a.Subject">
                         <CellTemplate>
@@ -217,6 +217,11 @@
                         <HeaderTemplate>@L["Actions"]</HeaderTemplate>
                         <CellTemplate>
                             <MudStack Row Spacing="1">
+                                <MudIconButton Size="Size.Small"
+                                  Color="Color.Info"
+                                  Icon="@Icons.Material.Filled.Visibility"
+                                  Title="@L["View Details"]"
+                                  OnClick="() => ViewActivityDetails(context.Item)" />
                                 @if (context.Item.Status != ActivityStatus.Completed)
                                 {
                                     <MudIconButton Size="Size.Small"
@@ -368,6 +373,11 @@
         {
             await LoadActivities();
         }
+    }
+
+    private void ViewActivityDetails(ActivityDto activity)
+    {
+        Navigation.NavigateTo($"/activities/details/{activity.Id}");
     }
 
     private async Task EditActivity(ActivityDto activity)

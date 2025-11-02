@@ -1,0 +1,135 @@
+@page "/notes/index"
+@using CleanAspire.ClientApp.DTOs
+
+@inject NavigationManager Navigation
+
+<PageTitle>@L["Notes"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <!-- Header -->
+    <MudPaper Class="pa-4 mb-4">
+        <MudStack Row Spacing="0" Justify="Justify.SpaceBetween">
+            <MudStack Row AlignItems="AlignItems.Start">
+                <MudIcon Icon="@Icons.Material.Outlined.Note" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle2">@L["Notes Management"]</MudText>
+                    <MudText Typo="Typo.body2">@L["Create and manage notes for entities"]</MudText>
+                </MudStack>
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+
+    <!-- Instructions -->
+    <MudPaper Class="pa-4 mb-4">
+        <MudAlert Severity="Severity.Success" Icon="@Icons.Material.Filled.CheckCircle">
+            <MudText Typo="Typo.body1">
+                Notes functionality is now available! Notes are created in the context of specific entities (Clients, Contacts, Activities).
+                Navigate to any entity details page to access the Notes tab.
+            </MudText>
+            <MudStack Row Spacing="2" Class="mt-3">
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Href="/clients/index">
+                    <MudIcon Icon="@Icons.Material.Filled.Business" Class="mr-1" />
+                    View Clients
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Href="/contacts/index">
+                    <MudIcon Icon="@Icons.Material.Filled.Person" Class="mr-1" />
+                    View Contacts
+                </MudButton>
+                <MudButton Variant="Variant.Outlined" Size="Size.Small" Href="/activities/index">
+                    <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-1" />
+                    View Activities
+                </MudButton>
+            </MudStack>
+        </MudAlert>
+    </MudPaper>
+
+    <!-- Features Overview -->
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="4">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Large" Color="Color.Primary" />
+                        <MudText Typo="Typo.h6">Client Notes</MudText>
+                        <MudText Typo="Typo.body2" Align="Align.Center">
+                            Create and manage notes for your clients. Track important information, meeting notes, and client preferences.
+                        </MudText>
+                    </MudStack>
+                    <MudButton Variant="Variant.Outlined" FullWidth="true" Href="/clients/index" Class="mt-3">
+                        Go to Clients
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Large" Color="Color.Secondary" />
+                        <MudText Typo="Typo.h6">Contact Notes</MudText>
+                        <MudText Typo="Typo.body2" Align="Align.Center">
+                            Keep track of conversations, preferences, and important details about your contacts.
+                        </MudText>
+                    </MudStack>
+                    <MudButton Variant="Variant.Outlined" FullWidth="true" Href="/contacts/index" Class="mt-3">
+                        Go to Contacts
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudCard Elevation="2">
+                <MudCardContent>
+                    <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                        <MudIcon Icon="@Icons.Material.Filled.Assignment" Size="Size.Large" Color="Color.Tertiary" />
+                        <MudText Typo="Typo.h6">Activity Notes</MudText>
+                        <MudText Typo="Typo.body2" Align="Align.Center">
+                            Add notes and context to your activities, meetings, and follow-ups.
+                        </MudText>
+                    </MudStack>
+                    <MudButton Variant="Variant.Outlined" FullWidth="true" Href="/activities/index" Class="mt-3">
+                        Go to Activities
+                    </MudButton>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Feature List -->
+    <MudPaper Class="pa-4 mt-4">
+        <MudText Typo="Typo.h6" Class="mb-3">Note Features</MudText>
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.PushPin" Color="Color.Warning" />
+                    <MudText Typo="Typo.body2">Pin important notes for quick access</MudText>
+                </MudStack>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Lock" Color="Color.Error" />
+                    <MudText Typo="Typo.body2">Mark notes as private for sensitive information</MudText>
+                </MudStack>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Title" Color="Color.Primary" />
+                    <MudText Typo="Typo.body2">Add titles to organize your notes</MudText>
+                </MudStack>
+            </MudItem>
+            <MudItem xs="12" md="6">
+                <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Secondary" />
+                    <MudText Typo="Typo.body2">Track creation and modification timestamps</MudText>
+                </MudStack>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    // Simplified landing page for Notes functionality
+    // Notes are managed within the context of specific entities
+}

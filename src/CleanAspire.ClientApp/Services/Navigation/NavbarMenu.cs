@@ -130,8 +130,8 @@ public static class NavbarMenu
                         new MenuItem
                         {
                             Label = "Notes",
-                            Href = "",
-                            Status = PageStatus.ComingSoon,
+                            Href = "/notes/index",
+                            Status = PageStatus.New,
                             Description = "View and manage notes across all entities."
                         },
                         new MenuItem

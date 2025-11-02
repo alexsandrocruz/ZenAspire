@@ -143,7 +143,7 @@
                                         }
                                         @if (_activity.IsOverdue && _activity.Status != ActivityStatus.Completed)
                                         {
-                                            <MudChip Size="Size.Small" Color="Color.Error">
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Error">
                                                 <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Class="mr-1" />
                                                 Overdue
                                             </MudChip>
@@ -174,7 +174,7 @@
                                             {
                                                 <MudStack Row Spacing="2">
                                                     <MudText Typo="Typo.body2" Color="Color.Default">@L["Assigned To:"]</MudText>
-                                                    <MudChip Size="Size.Small" Color="Color.Default">
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Default">
                                                         <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-1" />
                                                         @_activity.AssignedToUserName
                                                     </MudChip>
@@ -201,7 +201,7 @@
                                         <MudStack Spacing="2">
                                             <MudStack Row Spacing="2">
                                                 <MudText Typo="Typo.body2" Color="Color.Default">@L["Type:"]</MudText>
-                                                <MudChip Size="Size.Small" Color="Color.Primary">
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Primary">
                                                     @_activity.RegardingType.Value.ToString()
                                                 </MudChip>
                                             </MudStack>
@@ -220,7 +220,7 @@
                 <!-- Notes Tab -->
                 <MudTabPanel Text="@L["Notes"]" Icon="@Icons.Material.Filled.StickyNote2">
                     <NotesPanel OwnerType="OwnerType.Activity"
-                                OwnerId="@_activity.Id"
+                                OwnerId="@_activityGuid"
                                 Title="@L["Activity Notes"]" />
                 </MudTabPanel>
             </MudTabs>
@@ -235,9 +235,16 @@
     private bool _loading = true;
     private string? _error;
     private int _activeTab = 0;
+    private Guid _activityGuid;
 
     protected override async Task OnInitializedAsync()
     {
+        if (!Guid.TryParse(ActivityId, out _activityGuid))
+        {
+            _error = @L["Invalid activity ID"];
+            _loading = false;
+            return;
+        }
         await LoadActivity();
     }
 
@@ -249,7 +256,7 @@
 
         try
         {
-            _activity = await ActivityServiceProxy.GetActivityByIdAsync(ActivityId);
+            _activity = await ActivityServiceProxy.GetActivityByIdAsync(_activityGuid);
             if (_activity == null)
             {
                 _error = @L["Activity not found"];

@@ -2,6 +2,7 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using CleanAspire.Application.Common.Models;
 using CleanAspire.Application.Features.Notes.Commands;
 using CleanAspire.Application.Features.Notes.DTOs;
 using CleanAspire.Application.Features.Notes.Queries;
@@ -21,7 +22,22 @@ public class NoteEndpointRegistrar(ILogger<NoteEndpointRegistrar> logger) : IEnd
         var group = routes.MapGroup("/api/crm/notes").WithTags("CRM.Notes");
 
         /// <summary>
-        /// Gets all notes for a specific entity.
+        /// Gets paginated notes for a specific entity.
+        /// </summary>
+        group.MapGet("/owner/{ownerType}/{ownerId}", (
+            IMediator mediator,
+            [FromRoute] OwnerType ownerType,
+            [FromRoute] Guid ownerId,
+            [FromQuery] int pageNumber = 1,
+            [FromQuery] int pageSize = 10) => mediator.Send(new GetNotesByOwnerQuery(ownerType, ownerId.ToString())))
+        .Produces<IEnumerable<NoteDto>>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status500InternalServerError)
+        .WithSummary("Get notes for entity")
+        .WithDescription("Returns a list of notes for a specific entity (Client, Contact, etc.).");
+
+        /// <summary>
+        /// Gets all notes for a specific entity (legacy endpoint for backward compatibility).
         /// </summary>
         group.MapGet("/{ownerType}/{ownerId}", (
             IMediator mediator,

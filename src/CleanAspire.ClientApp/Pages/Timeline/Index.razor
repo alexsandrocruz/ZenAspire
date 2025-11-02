@@ -1,0 +1,668 @@
+@page "/timeline"
+@using System.Net.Http.Json
+@using CleanAspire.ClientApp.DTOs
+@using CleanAspire.ClientApp.Shared.Dialogs
+@using MudBlazor
+
+<PageTitle>Timeline - CleanAspire CRM</PageTitle>
+
+@inject IHttpClientFactory HttpClientFactory
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <!-- Header -->
+    <MudPaper Class="pa-4 mb-4" Elevation="1">
+        <MudStack Row Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
+                <MudIcon Icon="@Icons.Material.Filled.Timeline" Size="Size.Large" Color="Color.Primary" />
+                <MudText Typo="Typo.h4">Unified Timeline</MudText>
+                <MudChip T="string" Size="Size.Small" Color="Color.Success">Beta</MudChip>
+            </MudStack>
+            <MudStack Row Spacing="1">
+                <MudButton Variant="Variant.Outlined"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           OnClick="CreateActivity">
+                    New Activity
+                </MudButton>
+                <MudButton Variant="Variant.Outlined"
+                           StartIcon="@Icons.Material.Filled.StickyNote2"
+                           OnClick="CreateNote">
+                    New Note
+                </MudButton>
+                <MudButton Variant="Variant.Filled"
+                           StartIcon="@Icons.Material.Filled.Refresh"
+                           OnClick="LoadData"
+                           Disabled="@_loading">
+                    Refresh
+                </MudButton>
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+
+    <!-- Filters and Controls -->
+    <MudPaper Class="pa-4 mb-4" Elevation="0" Outlined="true">
+        <MudGrid Spacing="2">
+            <!-- Owner Type Selection -->
+            <MudItem xs="12" md="3">
+                <MudSelect T="OwnerType?"
+                           @bind-Value="_selectedOwnerType"
+                           Label="Entity Type"
+                           Variant="Variant.Outlined"
+                           Dense="true"
+                           Clearable="true"
+                           @bind-Value:after="OnFilterChanged">
+                    <MudSelectItem T="OwnerType?" Value="@null">All Entities</MudSelectItem>
+                    <MudSelectItem T="OwnerType?" Value="@OwnerType.Client">Clients</MudSelectItem>
+                    <MudSelectItem T="OwnerType?" Value="@OwnerType.Contact">Contacts</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <!-- Entity Selection -->
+            <MudItem xs="12" md="3">
+                <MudSelect T="Guid?"
+                           @bind-Value="_selectedOwnerId"
+                           Label="Select Entity"
+                           Variant="Variant.Outlined"
+                           Dense="true"
+                           Clearable="true"
+                           Disabled="@(!_selectedOwnerType.HasValue)"
+                           @bind-Value:after="OnFilterChanged">
+                    <MudSelectItem T="Guid?" Value="@null">All</MudSelectItem>
+                    @if (_availableEntities.Any())
+                    {
+                        @foreach (var entity in _availableEntities)
+                        {
+                            <MudSelectItem T="Guid?" Value="@entity.Id">@entity.DisplayName</MudSelectItem>
+                        }
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <!-- Type Filter -->
+            <MudItem xs="12" md="2">
+                <MudSelect T="int?"
+                           @bind-Value="_typeFilter"
+                           Label="Type Filter"
+                           Variant="Variant.Outlined"
+                           Dense="true"
+                           Clearable="true"
+                           @bind-Value:after="OnFilterChanged">
+                    <MudSelectItem T="int?" Value="@null">All Types</MudSelectItem>
+                    <MudSelectItem T="int?" Value="@((int?)TimelineItemType.Activity)">Activities</MudSelectItem>
+                    <MudSelectItem T="int?" Value="@((int?)TimelineItemType.Interaction)">Interactions</MudSelectItem>
+                    <MudSelectItem T="int?" Value="@((int?)TimelineItemType.Note)">Notes</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <!-- Quick Filters -->
+            <MudItem xs="12" md="4">
+                <MudStack Row Spacing="1">
+                    <MudChip T="string" Size="Size.Small"
+                             Color="@(IsQuickFilterActive(QuickFilter.Today) ? Color.Primary : Color.Default)"
+                             OnClick="() => SetQuickFilter(QuickFilter.Today)">
+                        Today
+                    </MudChip>
+                    <MudChip T="string" Size="Size.Small"
+                             Color="@(IsQuickFilterActive(QuickFilter.ThisWeek) ? Color.Primary : Color.Default)"
+                             OnClick="() => SetQuickFilter(QuickFilter.ThisWeek)">
+                        This Week
+                    </MudChip>
+                    <MudChip T="string" Size="Size.Small"
+                             Color="@(IsQuickFilterActive(QuickFilter.ThisMonth) ? Color.Primary : Color.Default)"
+                             OnClick="() => SetQuickFilter(QuickFilter.ThisMonth)">
+                        This Month
+                    </MudChip>
+                    <MudChip T="string" Size="Size.Small"
+                             Color="@(IsQuickFilterActive(QuickFilter.AllTime) ? Color.Primary : Color.Default)"
+                             OnClick="() => SetQuickFilter(QuickFilter.AllTime)">
+                        All Time
+                    </MudChip>
+                </MudStack>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- Timeline Content -->
+    @if (_loading && !_timelineItems.Any())
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+            <MudProgressCircular Indeterminate="true" />
+            <MudText Typo="Typo.body2">Loading timeline...</MudText>
+        </MudStack>
+    }
+    else if (_error != null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            Error loading timeline: @_error
+        </MudAlert>
+    }
+    else if (!_timelineItems.Any())
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+            <MudIcon Icon="@Icons.Material.Outlined.Timeline" Size="Size.Large" Color="Color.Default" />
+            <MudText Typo="Typo.h6">No timeline items found</MudText>
+            <MudText Typo="Typo.body2" Color="Color.Default">
+                Timeline items will appear here as activities, interactions, and notes are created
+            </MudText>
+        </MudStack>
+    }
+    else
+    {
+        <MudPaper Class="pa-4" Elevation="0" Outlined="true">
+            <MudStack Spacing="2">
+                <!-- Summary Stats -->
+                <MudGrid Spacing="2" Class="mb-4">
+                    <MudItem xs="12" md="3">
+                        <MudCard Elevation="0" Variant="Variant.Outlined">
+                            <MudCardContent>
+                                <MudStack AlignItems="AlignItems.Center">
+                                    <MudIcon Icon="@Icons.Material.Filled.Assignment" Color="Color.Primary" />
+                                    <MudText Typo="Typo.h4">@_stats.Activities</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Default">Activities</MudText>
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudCard Elevation="0" Variant="Variant.Outlined">
+                            <MudCardContent>
+                                <MudStack AlignItems="AlignItems.Center">
+                                    <MudIcon Icon="@Icons.Material.Filled.Forum" Color="Color.Success" />
+                                    <MudText Typo="Typo.h4">@_stats.Interactions</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Default">Interactions</MudText>
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudCard Elevation="0" Variant="Variant.Outlined">
+                            <MudCardContent>
+                                <MudStack AlignItems="AlignItems.Center">
+                                    <MudIcon Icon="@Icons.Material.Filled.StickyNote2" Color="Color.Warning" />
+                                    <MudText Typo="Typo.h4">@_stats.Notes</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Default">Notes</MudText>
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                    <MudItem xs="12" md="3">
+                        <MudCard Elevation="0" Variant="Variant.Outlined">
+                            <MudCardContent>
+                                <MudStack AlignItems="AlignItems.Center">
+                                    <MudIcon Icon="@Icons.Material.Filled.Today" Color="Color.Info" />
+                                    <MudText Typo="Typo.h4">@_stats.Total</MudText>
+                                    <MudText Typo="Typo.body2" Color="Color.Default">Total Items</MudText>
+                                </MudStack>
+                            </MudCardContent>
+                        </MudCard>
+                    </MudItem>
+                </MudGrid>
+
+                <!-- Timeline -->
+                <MudTimeline TimelineOrientation="TimelineOrientation.Vertical"
+                             TimelinePosition="TimelinePosition.Start"
+                             TimelineAlign="TimelineAlign.Default">
+                    @foreach (var item in _timelineItems)
+                    {
+                        <MudTimelineItem Color="@GetTimelineColor(item)"
+                                         Size="Size.Small"
+                                         Elevation="0">
+                            <ItemOpposite>
+                                <MudText Typo="Typo.body2" Color="Color.Default">
+                                    @GetRelativeTime(item.Date)
+                                </MudText>
+                            </ItemOpposite>
+                            <ItemContent>
+                                <MudPaper Class="pa-3 mb-2" Elevation="1">
+                                    <MudStack Spacing="1">
+                                        <!-- Header with Icon and Badge -->
+                                        <MudStack Row Spacing="2" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                                <MudIcon Icon="@GetIconForItem(item)" Size="Size.Small" Color="@GetTimelineColor(item)" />
+                                                <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">
+                                                    @item.Title
+                                                </MudText>
+                                            </MudStack>
+                                            @if (!string.IsNullOrEmpty(item.Badge))
+                                            {
+                                                <MudChip T="string" Size="Size.Small" Color="@GetChipColor(item)">
+                                                    @item.Badge
+                                                </MudChip>
+                                            }
+                                        </MudStack>
+
+                                        <!-- Description -->
+                                        @if (!string.IsNullOrEmpty(item.Description))
+                                        {
+                                            <MudText Typo="Typo.body2" Color="Color.Default">
+                                                @item.Description
+                                            </MudText>
+                                        }
+
+                                        <!-- Metadata Row -->
+                                        <MudStack Row Spacing="3" AlignItems="AlignItems.Center" Class="mt-1">
+                                            <!-- Type Badge -->
+                                            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                                <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" />
+                                                <MudText Typo="Typo.caption">@item.TypeName</MudText>
+                                            </MudStack>
+
+                                            <!-- User -->
+                                            @if (!string.IsNullOrEmpty(item.User) || !string.IsNullOrEmpty(item.CreatedBy))
+                                            {
+                                                <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                                                    <MudText Typo="Typo.caption">@(item.User ?? item.CreatedBy)</MudText>
+                                                </MudStack>
+                                            }
+
+                                            <!-- Duration -->
+                                            @if (item.Duration.HasValue)
+                                            {
+                                                <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                                    <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" />
+                                                    <MudText Typo="Typo.caption">@FormatDuration(item)</MudText>
+                                                </MudStack>
+                                            }
+
+                                            <!-- Pinned Indicator -->
+                                            @if (item.IsPinned)
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.PushPin" Size="Size.Small" Color="Color.Warning" Title="Pinned" />
+                                            }
+
+                                            <!-- Private Indicator -->
+                                            @if (item.IsPrivate)
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Color="Color.Default" Title="Private" />
+                                            }
+                                        </MudStack>
+                                    </MudStack>
+                                </MudPaper>
+                            </ItemContent>
+                        </MudTimelineItem>
+                    }
+                </MudTimeline>
+
+                <!-- Load More Button -->
+                @if (_hasMorePages)
+                {
+                    <MudStack AlignItems="AlignItems.Center" Class="mt-4">
+                        <MudButton Variant="Variant.Outlined"
+                                   Color="Color.Primary"
+                                   OnClick="LoadMore"
+                                   Disabled="@_loading">
+                            @if (_loading)
+                            {
+                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                            }
+                            Load More
+                        </MudButton>
+                    </MudStack>
+                }
+            </MudStack>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    // Filter state
+    private OwnerType? _selectedOwnerType = null;
+    private Guid? _selectedOwnerId = null;
+    private int? _typeFilter = null;
+    private DateTime? _startDate = null;
+    private DateTime? _endDate = null;
+    private QuickFilter? _activeQuickFilter = QuickFilter.AllTime;
+
+    // Data state
+    private List<TimelineItemDto> _timelineItems = new();
+    private List<EntityDto> _availableEntities = new();
+    private bool _loading = false;
+    private string? _error = null;
+    private int _currentPage = 1;
+    private int _totalCount = 0;
+    private bool _hasMorePages = false;
+
+    // Statistics
+    private TimelineStats _stats = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Set initial quick filter to All Time
+        await SetQuickFilter(QuickFilter.AllTime);
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            // Load available entities if owner type is selected
+            if (_selectedOwnerType.HasValue)
+            {
+                await LoadAvailableEntities();
+            }
+
+            // Load timeline data
+            await LoadTimelineData();
+
+            // Calculate statistics
+            CalculateStats();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add($"Error loading timeline: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAvailableEntities()
+    {
+        if (!_selectedOwnerType.HasValue) return;
+
+        try
+        {
+            var httpClient = HttpClientFactory.CreateClient("apiservice");
+            var endpoint = _selectedOwnerType.Value switch
+            {
+                OwnerType.Client => "/api/crm/clients/list",
+                OwnerType.Contact => "/api/crm/contacts/list",
+                _ => throw new NotSupportedException($"Owner type {_selectedOwnerType} not supported")
+            };
+
+            var response = await httpClient.GetAsync(endpoint);
+            if (response.IsSuccessStatusCode)
+            {
+                var entities = await response.Content.ReadFromJsonAsync<List<EntityDto>>();
+                _availableEntities = entities ?? new List<EntityDto>();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading entities: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private async Task LoadTimelineData()
+    {
+        var httpClient = HttpClientFactory.CreateClient("apiservice");
+        var endpoint = "/api/crm/timeline";
+        var queryParams = BuildQueryParams();
+        var url = $"{endpoint}?{queryParams}";
+
+        var response = await httpClient.GetAsync(url);
+
+        if (!response.IsSuccessStatusCode)
+        {
+            _error = $"API returned {response.StatusCode}";
+            return;
+        }
+
+        var result = await response.Content.ReadFromJsonAsync<PaginatedResult<TimelineItemDto>>();
+
+        if (result != null)
+        {
+            if (_currentPage == 1)
+                _timelineItems.Clear();
+
+            _timelineItems.AddRange(result.Items ?? Enumerable.Empty<TimelineItemDto>());
+            _totalCount = result.TotalCount;
+            _hasMorePages = result.PageNumber < result.TotalPages;
+        }
+    }
+
+    private string BuildQueryParams()
+    {
+        var queryParams = new List<string>
+        {
+            $"pageNumber={_currentPage}",
+            $"pageSize=20"
+        };
+
+        if (_selectedOwnerType.HasValue)
+        {
+            queryParams.Add($"ownerType={_selectedOwnerType.Value}");
+        }
+
+        if (_selectedOwnerId.HasValue)
+        {
+            queryParams.Add($"ownerId={_selectedOwnerId.Value}");
+        }
+
+        if (_typeFilter.HasValue)
+        {
+            queryParams.Add($"typeFilter={_typeFilter.Value}");
+        }
+
+        if (_startDate.HasValue)
+        {
+            queryParams.Add($"startDate={_startDate.Value:yyyy-MM-dd}");
+        }
+
+        if (_endDate.HasValue)
+        {
+            queryParams.Add($"endDate={_endDate.Value:yyyy-MM-dd}");
+        }
+
+        return string.Join("&", queryParams);
+    }
+
+    private async Task OnFilterChanged()
+    {
+        _timelineItems.Clear();
+        _currentPage = 1;
+        _activeQuickFilter = null;
+        await LoadData();
+    }
+
+    private async Task LoadMore()
+    {
+        _currentPage++;
+        await LoadTimelineData();
+        StateHasChanged();
+    }
+
+    private async Task SetQuickFilter(QuickFilter filter)
+    {
+        _activeQuickFilter = filter;
+        _typeFilter = null;
+
+        var now = DateTime.UtcNow;
+
+        switch (filter)
+        {
+            case QuickFilter.Today:
+                _startDate = now.Date;
+                _endDate = now.Date.AddDays(1).AddTicks(-1);
+                break;
+
+            case QuickFilter.ThisWeek:
+                var startOfWeek = now.Date.AddDays(-(int)now.DayOfWeek);
+                _startDate = startOfWeek;
+                _endDate = startOfWeek.AddDays(7).AddTicks(-1);
+                break;
+
+            case QuickFilter.ThisMonth:
+                _startDate = new DateTime(now.Year, now.Month, 1);
+                _endDate = _startDate.Value.AddMonths(1).AddTicks(-1);
+                break;
+
+            case QuickFilter.AllTime:
+                _startDate = null;
+                _endDate = null;
+                break;
+        }
+
+        _timelineItems.Clear();
+        _currentPage = 1;
+        await LoadData();
+    }
+
+    private bool IsQuickFilterActive(QuickFilter filter)
+    {
+        return _activeQuickFilter == filter;
+    }
+
+    private void CalculateStats()
+    {
+        _stats = new TimelineStats
+        {
+            Activities = _timelineItems.Count(i => i.Type == TimelineItemType.Activity),
+            Interactions = _timelineItems.Count(i => i.Type == TimelineItemType.Interaction),
+            Notes = _timelineItems.Count(i => i.Type == TimelineItemType.Note),
+            Total = _timelineItems.Count
+        };
+    }
+
+    // Helper methods (copied from TimelineView.razor)
+    private string GetIconForItem(TimelineItemDto item)
+    {
+        return item.Icon.ToLowerInvariant() switch
+        {
+            "email" => Icons.Material.Filled.Email,
+            "phone" => Icons.Material.Filled.Phone,
+            "whatsapp" => Icons.Material.Filled.Chat,
+            "meeting" => Icons.Material.Filled.Event,
+            "task" => Icons.Material.Filled.Task,
+            "note" => Icons.Material.Filled.StickyNote2,
+            "sms" => Icons.Material.Filled.Sms,
+            "video" => Icons.Material.Filled.VideoCall,
+            "event" => Icons.Material.Filled.CalendarToday,
+            "chat" => Icons.Material.Filled.Chat,
+            "instagram" => Icons.Material.Filled.Public,
+            "facebook" => Icons.Material.Filled.Public,
+            "linkedin" => Icons.Material.Filled.Public,
+            "twitter" => Icons.Material.Filled.Public,
+            "interaction" => Icons.Material.Filled.Forum,
+            "activity" => Icons.Material.Filled.Assignment,
+            _ => Icons.Material.Filled.FiberManualRecord
+        };
+    }
+
+    private Color GetTimelineColor(TimelineItemDto item)
+    {
+        return (item.ColorHint?.ToLowerInvariant()) switch
+        {
+            "success" => Color.Success,
+            "info" => Color.Info,
+            "warning" => Color.Warning,
+            "error" => Color.Error,
+            "primary" => Color.Primary,
+            "secondary" => Color.Secondary,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetChipColor(TimelineItemDto item)
+    {
+        return GetTimelineColor(item);
+    }
+
+    private string GetRelativeTime(DateTime date)
+    {
+        var timeSpan = DateTime.UtcNow - date;
+
+        if (timeSpan.TotalSeconds < 60)
+            return "Just now";
+
+        if (timeSpan.TotalMinutes < 60)
+            return $"{(int)timeSpan.TotalMinutes} minutes ago";
+
+        if (timeSpan.TotalHours < 24)
+            return $"{(int)timeSpan.TotalHours} hours ago";
+
+        if (timeSpan.TotalDays < 7)
+            return $"{(int)timeSpan.TotalDays} days ago";
+
+        if (timeSpan.TotalDays < 30)
+            return $"{(int)(timeSpan.TotalDays / 7)} weeks ago";
+
+        if (timeSpan.TotalDays < 365)
+            return $"{(int)(timeSpan.TotalDays / 30)} months ago";
+
+        return date.ToString("MMM d, yyyy");
+    }
+
+    private string FormatDuration(TimelineItemDto item)
+    {
+        if (!item.Duration.HasValue)
+            return string.Empty;
+
+        if (item.Type == TimelineItemType.Interaction)
+        {
+            var seconds = item.Duration.Value;
+            if (seconds < 60)
+                return $"{seconds} sec";
+            if (seconds < 3600)
+                return $"{seconds / 60} min";
+            return $"{seconds / 3600} hr {seconds % 3600 / 60} min";
+        }
+
+        var minutes = item.Duration.Value;
+        if (minutes < 60)
+            return $"{minutes} min";
+        return $"{minutes / 60} hr {minutes % 60} min";
+    }
+
+    private async Task CreateActivity()
+    {
+        var parameters = new DialogParameters();
+        // You might want to add owner selection here
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ActivityDialog>("Create Activity", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            await LoadData();
+            Snackbar.Add("Activity created successfully", Severity.Success);
+        }
+    }
+
+    private async Task CreateNote()
+    {
+        var parameters = new DialogParameters();
+        // You might want to add owner selection here
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<NoteDialog>("Create Note", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            await LoadData();
+            Snackbar.Add("Note created successfully", Severity.Success);
+        }
+    }
+
+    private enum QuickFilter
+    {
+        Today,
+        ThisWeek,
+        ThisMonth,
+        AllTime
+    }
+
+    // DTO classes
+    public class EntityDto
+    {
+        public Guid Id { get; set; }
+        public string DisplayName { get; set; } = string.Empty;
+    }
+
+    public class TimelineStats
+    {
+        public int Activities { get; set; }
+        public int Interactions { get; set; }
+        public int Notes { get; set; }
+        public int Total { get; set; }
+    }
+}

@@ -137,9 +137,9 @@ public static class NavbarMenu
                         new MenuItem
                         {
                             Label = "Timeline",
-                            Href = "",
-                            Status = PageStatus.ComingSoon,
-                            Description = "Unified timeline view of all activities and interactions."
+                            Href = "/timeline",
+                            Status = PageStatus.New,
+                            Description = "Unified timeline view of all activities, interactions, and notes."
                         }
                     }
                 },

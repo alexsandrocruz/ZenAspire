@@ -142,11 +142,14 @@
         else
         {
             // Create mode - set defaults
-            _model.OwnerType = OwnerType;
-            _model.OwnerId = OwnerId;
-            _model.IsPinned = false;
-            _model.IsPrivate = false;
-            _model.Body = string.Empty;
+            _model = new NoteRequest
+            {
+                OwnerType = OwnerType,
+                OwnerId = OwnerId,
+                IsPinned = false,
+                IsPrivate = false,
+                Body = string.Empty
+            };
         }
     }
 

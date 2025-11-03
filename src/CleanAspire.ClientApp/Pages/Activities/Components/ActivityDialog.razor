@@ -14,9 +14,9 @@
                 <MudItem xs="12">
                     <MudTextField T="string"
                                   @bind-Value="_model.Subject"
-                                  Label="Subject"
+                                  Label="@L["Subject"]"
                                   Required="true"
-                                  RequiredError="Subject is required"
+                                  RequiredError="@L["Subject is required"]"
                                   Variant="Variant.Outlined" />
                 </MudItem>
 
@@ -24,48 +24,48 @@
                 <MudItem xs="12" md="6">
                     <MudSelect T="ActivityType"
                                @bind-Value="_model.Type"
-                               Label="Type"
+                               Label="@L["Type"]"
                                Required="true"
                                Variant="Variant.Outlined">
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.Task">Task</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.PhoneCall">Phone Call</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.Meeting">Meeting</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.FollowUp">Follow Up</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.Email">Email</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.WhatsAppMessage">WhatsApp Message</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.WhatsAppFlow">WhatsApp Flow</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.SMS">SMS</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.InstagramDM">Instagram DM</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.FacebookMessage">Facebook Message</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.LinkedInMessage">LinkedIn Message</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.TwitterDM">Twitter DM</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.VideoCall">Video Call</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.WebChat">Web Chat</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.Chatbot">Chatbot</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.Event">Event</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.Webinar">Webinar</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.Presentation">Presentation</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.Workshop">Workshop</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.Newsletter">Newsletter</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.Campaign">Campaign</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.Survey">Survey</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.Note">Note</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.Document">Document</MudSelectItem>
-                        <MudSelectItem T="ActivityType" Value="@ActivityType.Other">Other</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Task">@L["Task"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.PhoneCall">@L["Phone Call"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Meeting">@L["Meeting"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.FollowUp">@L["Follow Up"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Email">@L["Email"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.WhatsAppMessage">@L["WhatsApp Message"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.WhatsAppFlow">@L["WhatsApp Flow"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.SMS">@L["SMS"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.InstagramDM">@L["Instagram DM"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.FacebookMessage">@L["Facebook Message"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.LinkedInMessage">@L["LinkedIn Message"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.TwitterDM">@L["Twitter DM"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.VideoCall">@L["Video Call"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.WebChat">@L["Web Chat"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Chatbot">@L["Chatbot"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Event">@L["Event"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Webinar">@L["Webinar"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Presentation">@L["Presentation"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Workshop">@L["Workshop"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Newsletter">@L["Newsletter"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Campaign">@L["Campaign"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Survey">@L["Survey"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Note">@L["Note"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Document">@L["Document"]</MudSelectItem>
+                        <MudSelectItem T="ActivityType" Value="@ActivityType.Other">@L["Other"]</MudSelectItem>
                     </MudSelect>
                 </MudItem>
 
                 <MudItem xs="12" md="6">
                     <MudSelect T="string"
                                @bind-Value="_priorityString"
-                               Label="Priority"
+                               Label="@L["Priority"]"
                                Required="true"
                                Variant="Variant.Outlined"
                                @bind-Value:after="OnPriorityChanged">
-                        <MudSelectItem Value="1">Low</MudSelectItem>
-                        <MudSelectItem Value="2">Normal</MudSelectItem>
-                        <MudSelectItem Value="3">High</MudSelectItem>
-                        <MudSelectItem Value="4">Urgent</MudSelectItem>
+                        <MudSelectItem Value="1">@L["Low"]</MudSelectItem>
+                        <MudSelectItem Value="2">@L["Normal"]</MudSelectItem>
+                        <MudSelectItem Value="3">@L["High"]</MudSelectItem>
+                        <MudSelectItem Value="4">@L["Urgent"]</MudSelectItem>
                     </MudSelect>
                 </MudItem>
 
@@ -73,14 +73,14 @@
                 <MudItem xs="12" md="6">
                     <MudSelect T="ActivityStatus"
                                @bind-Value="_model.Status"
-                               Label="Status"
+                               Label="@L["Status"]"
                                Required="true"
                                Variant="Variant.Outlined">
-                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Open">Open</MudSelectItem>
-                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.InProgress">In Progress</MudSelectItem>
-                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Completed">Completed</MudSelectItem>
-                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Canceled">Canceled</MudSelectItem>
-                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Deferred">Deferred</MudSelectItem>
+                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Open">@L["Open"]</MudSelectItem>
+                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.InProgress">@L["In Progress"]</MudSelectItem>
+                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Completed">@L["Completed"]</MudSelectItem>
+                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Canceled">@L["Canceled"]</MudSelectItem>
+                        <MudSelectItem T="ActivityStatus" Value="@ActivityStatus.Deferred">@L["Deferred"]</MudSelectItem>
                     </MudSelect>
                 </MudItem>
 
@@ -88,7 +88,7 @@
                 <MudItem xs="12" md="6">
                     <MudNumericField T="int?"
                                      @bind-Value="_model.DurationMinutes"
-                                     Label="Duration (minutes)"
+                                     Label="@L["Duration (minutes)"]"
                                      Min="0"
                                      Variant="Variant.Outlined" />
                 </MudItem>
@@ -96,21 +96,21 @@
                 <!-- Start Date and Due Date -->
                 <MudItem xs="12" md="6">
                     <MudDatePicker @bind-Date="_startDate"
-                                   Label="Start Date"
+                                   Label="@L["Start Date"]"
                                    Required="true"
                                    Variant="Variant.Outlined" />
                 </MudItem>
 
                 <MudItem xs="12" md="6">
                     <MudDatePicker @bind-Date="_dueDate"
-                                   Label="Due Date"
+                                   Label="@L["Due Date"]"
                                    Variant="Variant.Outlined" />
                 </MudItem>
 
                 <!-- Reminder -->
                 <MudItem xs="12" md="6">
                     <MudDatePicker @bind-Date="_reminderDate"
-                                   Label="Reminder Date"
+                                   Label="@L["Reminder Date"]"
                                    Variant="Variant.Outlined" />
                 </MudItem>
 
@@ -118,7 +118,7 @@
                 <MudItem xs="12" md="6">
                     <MudTextField T="string"
                                   @bind-Value="_model.Location"
-                                  Label="Location"
+                                  Label="@L["Location"]"
                                   Variant="Variant.Outlined" />
                 </MudItem>
 
@@ -127,43 +127,43 @@
                     <MudSelect T="RegardingType?"
                                Value="_model.RegardingType"
                                ValueChanged="@((RegardingType? val) => _model.RegardingType = val)"
-                               Label="Regarding Type"
+                               Label="@L["Regarding Type"]"
                                Clearable="true"
                                Variant="Variant.Outlined">
-                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)null)">None</MudSelectItem>
-                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Client)">Client</MudSelectItem>
-                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Contact)">Contact</MudSelectItem>
-                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Opportunity)">Opportunity</MudSelectItem>
-                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Case)">Case</MudSelectItem>
-                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Lead)">Lead</MudSelectItem>
-                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Campaign)">Campaign</MudSelectItem>
-                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Project)">Project</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)null)">@L["None"]</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Client)">@L["Client"]</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Contact)">@L["Contact"]</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Opportunity)">@L["Opportunity"]</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Case)">@L["Case"]</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Lead)">@L["Lead"]</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Campaign)">@L["Campaign"]</MudSelectItem>
+                        <MudSelectItem T="RegardingType?" Value="@((RegardingType?)RegardingType.Project)">@L["Project"]</MudSelectItem>
                     </MudSelect>
                 </MudItem>
 
                 <MudItem xs="12" md="6">
                     <MudTextField T="string"
                                   @bind-Value="_regardingIdString"
-                                  Label="Regarding ID (GUID)"
+                                  Label="@L["Regarding ID (GUID)"]"
                                   Variant="Variant.Outlined"
                                   Disabled="!_model.RegardingType.HasValue"
-                                  HelperText="@(_model.RegardingType.HasValue ? "Enter the GUID of the related entity" : "Select a Regarding Type first")" />
+                                  HelperText="@(_model.RegardingType.HasValue ? @L["Enter the GUID of the related entity"] : @L["Select a Regarding Type first"])" />
                 </MudItem>
 
                 <!-- Assigned To -->
                 <MudItem xs="12">
                     <MudTextField T="string"
                                   @bind-Value="_model.AssignedToUserId"
-                                  Label="Assigned To User ID"
+                                  Label="@L["Assigned To User ID"]"
                                   Variant="Variant.Outlined"
-                                  HelperText="Leave empty to assign to yourself" />
+                                  HelperText="@L["Leave empty to assign to yourself"]" />
                 </MudItem>
 
                 <!-- Description -->
                 <MudItem xs="12">
                     <MudTextField T="string"
                                   @bind-Value="_model.Description"
-                                  Label="Description"
+                                  Label="@L["Description"]"
                                   Lines="5"
                                   Variant="Variant.Outlined" />
                 </MudItem>
@@ -171,13 +171,13 @@
         </MudForm>
     </DialogContent>
     <DialogActions>
-        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton OnClick="Cancel">@L["Cancel"]</MudButton>
         <MudButton Color="Color.Primary" OnClick="Submit" Disabled="!_formIsValid || _saving">
             @if (_saving)
             {
                 <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
             }
-            @(IsEdit ? "Update" : "Create")
+            @(IsEdit ? @L["Update"] : @L["Create"])
         </MudButton>
     </DialogActions>
 </MudDialog>
@@ -256,7 +256,7 @@
 
         if (!_formIsValid)
         {
-            Snackbar.Add("Please fix validation errors", Severity.Error);
+            Snackbar.Add(@L["Please fix validation errors"], Severity.Error);
             return;
         }
 
@@ -319,17 +319,17 @@
 
             if (success)
             {
-                Snackbar.Add(IsEdit ? "Activity updated successfully" : "Activity created successfully", Severity.Success);
+                Snackbar.Add(IsEdit ? @L["Activity updated successfully"] : @L["Activity created successfully"], Severity.Success);
                 MudDialog.Close(DialogResult.Ok(true));
             }
             else
             {
-                Snackbar.Add(IsEdit ? "Failed to update activity" : "Failed to create activity", Severity.Error);
+                Snackbar.Add(IsEdit ? @L["Failed to update activity"] : @L["Failed to create activity"], Severity.Error);
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Error: {ex.Message}", Severity.Error);
+            Snackbar.Add(@L["Error: {0}", ex.Message], Severity.Error);
         }
         finally
         {

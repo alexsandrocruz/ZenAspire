@@ -2,7 +2,11 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 // See the LICENSE file in the project root for more information.
 
+using System.Globalization;
 using CleanAspire.ClientApp;
+using Microsoft.AspNetCore.Localization;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Options;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +21,35 @@ builder.Services.AddRazorComponents()
 builder.Services.AddCoreServices(builder.Configuration);
 builder.Services.AddHttpClients(builder.Configuration);
 builder.Services.AddAuthenticationAndLocalization(builder.Configuration);
+
+// Add localization support
+builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
+
+// Configure request localization to support Portuguese (Brazil)
+builder.Services.Configure<RequestLocalizationOptions>(options =>
+{
+    var supportedCultures = new[]
+    {
+        new CultureInfo("pt-BR"),
+        new CultureInfo("en-US"),
+        new CultureInfo("es-ES"),
+        new CultureInfo("fr-FR"),
+        new CultureInfo("de-DE"),
+        new CultureInfo("ja-JP"),
+        new CultureInfo("zh-CN"),
+        new CultureInfo("ko-KR")
+    };
+
+    options.DefaultRequestCulture = new RequestCulture("pt-BR", "pt-BR");
+    options.SupportedCultures = supportedCultures;
+    options.SupportedUICultures = supportedCultures;
+
+    // Configure culture providers
+    options.RequestCultureProviders.Insert(0, new AcceptLanguageHeaderRequestCultureProvider
+    {
+        Options = options
+    });
+});
 
 var app = builder.Build();
 
@@ -34,6 +67,9 @@ else
 
 app.UseHttpsRedirection();
 
+// Add localization middleware
+var localizationOptions = app.Services.GetRequiredService<IOptions<RequestLocalizationOptions>>();
+app.UseRequestLocalization(localizationOptions.Value);
 
 app.UseAntiforgery();
 

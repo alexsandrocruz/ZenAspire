@@ -177,7 +177,25 @@ public static class DependencyInjection
     {
         var storageService = app.Services.GetRequiredService<IStorageService>();
         var languageCode = await storageService.GetItemAsync<string>(storageKey);
-        var culture = new CultureInfo(languageCode ?? CultureInfo.CurrentCulture.Name);
+
+        // If no stored language, detect from browser culture
+        if (string.IsNullOrEmpty(languageCode))
+        {
+            var browserCulture = CultureInfo.CurrentCulture.Name;
+
+            // Map Portuguese variations to pt-BR
+            if (browserCulture.StartsWith("pt", StringComparison.OrdinalIgnoreCase))
+            {
+                languageCode = "pt-BR";
+            }
+            // Default fallback
+            else
+            {
+                languageCode = browserCulture;
+            }
+        }
+
+        var culture = new CultureInfo(languageCode);
         CultureInfo.DefaultThreadCurrentCulture = culture;
         CultureInfo.DefaultThreadCurrentUICulture = culture;
     }

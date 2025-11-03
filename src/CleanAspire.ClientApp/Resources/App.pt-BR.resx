@@ -678,4 +678,618 @@
   <data name="Stock dispatching" xml:space="preserve">
     <value>Despacho de estoque</value>
   </data>
+
+  <!-- Client Management -->
+  <data name="Clients" xml:space="preserve">
+    <value>Clientes</value>
+  </data>
+  <data name="Client Management" xml:space="preserve">
+    <value>Gestão de Clientes</value>
+  </data>
+  <data name="Manage your clients and their information" xml:space="preserve">
+    <value>Gerencie seus clientes e suas informações</value>
+  </data>
+  <data name="New Client" xml:space="preserve">
+    <value>Novo Cliente</value>
+  </data>
+  <data name="Search clients..." xml:space="preserve">
+    <value>Pesquisar clientes...</value>
+  </data>
+  <data name="Filter by Type" xml:space="preserve">
+    <value>Filtrar por Tipo</value>
+  </data>
+  <data name="All Types" xml:space="preserve">
+    <value>Todos os Tipos</value>
+  </data>
+  <data name="Company" xml:space="preserve">
+    <value>Empresa</value>
+  </data>
+  <data name="Public Figure" xml:space="preserve">
+    <value>Figura Pública</value>
+  </data>
+  <data name="Government" xml:space="preserve">
+    <value>Governo</value>
+  </data>
+  <data name="Non Profit" xml:space="preserve">
+    <value>Sem Fins Lucrativos</value>
+  </data>
+  <data name="Filter by Status" xml:space="preserve">
+    <value>Filtrar por Status</value>
+  </data>
+  <data name="All Statuses" xml:space="preserve">
+    <value>Todos os Status</value>
+  </data>
+  <data name="Prospect" xml:space="preserve">
+    <value>Prospecto</value>
+  </data>
+  <data name="Active" xml:space="preserve">
+    <value>Ativo</value>
+  </data>
+  <data name="Inactive" xml:space="preserve">
+    <value>Inativo</value>
+  </data>
+  <data name="Churned" xml:space="preserve">
+    <value>Cancelado</value>
+  </data>
+  <data name="Blocked" xml:space="preserve">
+    <value>Bloqueado</value>
+  </data>
+  <data name="Loading clients..." xml:space="preserve">
+    <value>Carregando clientes...</value>
+  </data>
+  <data name="No clients found" xml:space="preserve">
+    <value>Nenhum cliente encontrado</value>
+  </data>
+  <data name="Create your first client to get started" xml:space="preserve">
+    <value>Crie seu primeiro cliente para começar</value>
+  </data>
+  <data name="Create First Client" xml:space="preserve">
+    <value>Criar Primeiro Cliente</value>
+  </data>
+  <data name="Phone" xml:space="preserve">
+    <value>Telefone</value>
+  </data>
+  <data name="Contacts" xml:space="preserve">
+    <value>Contatos</value>
+  </data>
+  <data name="Priority" xml:space="preserve">
+    <value>Prioridade</value>
+  </data>
+  <data name="Actions" xml:space="preserve">
+    <value>Ações</value>
+  </data>
+  <data name="View Contacts" xml:space="preserve">
+    <value>Ver Contatos</value>
+  </data>
+  <data name="Error loading clients: {0}" xml:space="preserve">
+    <value>Erro ao carregar clientes: {0}</value>
+  </data>
+  <data name="Data refreshed" xml:space="preserve">
+    <value>Dados atualizados</value>
+  </data>
+  <data name="Edit Client" xml:space="preserve">
+    <value>Editar Cliente</value>
+  </data>
+  <data name="Are you sure you want to delete the client '{0}'? This action cannot be undone." xml:space="preserve">
+    <value>Tem certeza de que deseja excluir o cliente '{0}'? Esta ação não pode ser desfeita.</value>
+  </data>
+  <data name="Delete Client" xml:space="preserve">
+    <value>Excluir Cliente</value>
+  </data>
+  <data name="Client deleted successfully" xml:space="preserve">
+    <value>Cliente excluído com sucesso</value>
+  </data>
+  <data name="Failed to delete client" xml:space="preserve">
+    <value>Falha ao excluir cliente</value>
+  </data>
+
+  <!-- Activity Management -->
+  <data name="Activities" xml:space="preserve">
+    <value>Atividades</value>
+  </data>
+  <data name="Activities Management" xml:space="preserve">
+    <value>Gestão de Atividades</value>
+  </data>
+  <data name="Manage all your activities, tasks, and follow-ups" xml:space="preserve">
+    <value>Gerencie todas as suas atividades, tarefas e acompanhamentos</value>
+  </data>
+  <data name="New Activity" xml:space="preserve">
+    <value>Nova Atividade</value>
+  </data>
+  <data name="Search activities..." xml:space="preserve">
+    <value>Pesquisar atividades...</value>
+  </data>
+  <data name="Open" xml:space="preserve">
+    <value>Aberto</value>
+  </data>
+  <data name="In Progress" xml:space="preserve">
+    <value>Em Andamento</value>
+  </data>
+  <data name="Completed" xml:space="preserve">
+    <value>Concluído</value>
+  </data>
+  <data name="Canceled" xml:space="preserve">
+    <value>Cancelado</value>
+  </data>
+  <data name="Deferred" xml:space="preserve">
+    <value>Adiado</value>
+  </data>
+  <data name="Task" xml:space="preserve">
+    <value>Tarefa</value>
+  </data>
+  <data name="Phone Call" xml:space="preserve">
+    <value>Ligação Telefônica</value>
+  </data>
+  <data name="Meeting" xml:space="preserve">
+    <value>Reunião</value>
+  </data>
+  <data name="Follow Up" xml:space="preserve">
+    <value>Acompanhamento</value>
+  </data>
+  <data name="WhatsApp" xml:space="preserve">
+    <value>WhatsApp</value>
+  </data>
+  <data name="Video Call" xml:space="preserve">
+    <value>Chamada de Vídeo</value>
+  </data>
+  <data name="All Priorities" xml:space="preserve">
+    <value>Todas as Prioridades</value>
+  </data>
+  <data name="Low" xml:space="preserve">
+    <value>Baixa</value>
+  </data>
+  <data name="Normal" xml:space="preserve">
+    <value>Normal</value>
+  </data>
+  <data name="High" xml:space="preserve">
+    <value>Alta</value>
+  </data>
+  <data name="Urgent" xml:space="preserve">
+    <value>Urgente</value>
+  </data>
+  <data name="Date Range" xml:space="preserve">
+    <value>Período de Datas</value>
+  </data>
+  <data name="Loading activities..." xml:space="preserve">
+    <value>Carregando atividades...</value>
+  </data>
+  <data name="No activities found" xml:space="preserve">
+    <value>Nenhuma atividade encontrada</value>
+  </data>
+  <data name="Create your first activity to get started" xml:space="preserve">
+    <value>Crie sua primeira atividade para começar</value>
+  </data>
+  <data name="Create First Activity" xml:space="preserve">
+    <value>Criar Primeira Atividade</value>
+  </data>
+  <data name="Subject" xml:space="preserve">
+    <value>Assunto</value>
+  </data>
+  <data name="Due Date" xml:space="preserve">
+    <value>Data de Vencimento</value>
+  </data>
+  <data name="Assigned To" xml:space="preserve">
+    <value>Atribuído a</value>
+  </data>
+  <data name="Regarding" xml:space="preserve">
+    <value>Referente a</value>
+  </data>
+  <data name="View Details" xml:space="preserve">
+    <value>Ver Detalhes</value>
+  </data>
+  <data name="Complete" xml:space="preserve">
+    <value>Concluir</value>
+  </data>
+  <data name="Activity completed successfully" xml:space="preserve">
+    <value>Atividade concluída com sucesso</value>
+  </data>
+  <data name="Failed to complete activity" xml:space="preserve">
+    <value>Falha ao concluir atividade</value>
+  </data>
+  <data name="Are you sure you want to delete the activity '{0}'? This action cannot be undone." xml:space="preserve">
+    <value>Tem certeza de que deseja excluir a atividade '{0}'? Esta ação não pode ser desfeita.</value>
+  </data>
+  <data name="Delete Activity" xml:space="preserve">
+    <value>Excluir Atividade</value>
+  </data>
+  <data name="Activity deleted successfully" xml:space="preserve">
+    <value>Atividade excluída com sucesso</value>
+  </data>
+  <data name="Failed to delete activity" xml:space="preserve">
+    <value>Falha ao excluir atividade</value>
+  </data>
+
+  <!-- Notes Management -->
+  <data name="Notes" xml:space="preserve">
+    <value>Notas</value>
+  </data>
+  <data name="Notes Management" xml:space="preserve">
+    <value>Gestão de Notas</value>
+  </data>
+  <data name="Create and manage notes for entities" xml:space="preserve">
+    <value>Crie e gerencie notas para entidades</value>
+  </data>
+
+  <!-- Timeline -->
+  <data name="Toggle Filters" xml:space="preserve">
+    <value>Alternar Filtros</value>
+  </data>
+  <data name="Type Filter" xml:space="preserve">
+    <value>Filtro por Tipo</value>
+  </data>
+  <data name="Interactions" xml:space="preserve">
+    <value>Interações</value>
+  </data>
+  <data name="Start Date" xml:space="preserve">
+    <value>Data Inicial</value>
+  </data>
+  <data name="End Date" xml:space="preserve">
+    <value>Data Final</value>
+  </data>
+  <data name="Today" xml:space="preserve">
+    <value>Hoje</value>
+  </data>
+  <data name="This Week" xml:space="preserve">
+    <value>Esta Semana</value>
+  </data>
+  <data name="This Month" xml:space="preserve">
+    <value>Este Mês</value>
+  </data>
+  <data name="All Time" xml:space="preserve">
+    <value>Todo o Período</value>
+  </data>
+  <data name="Loading timeline..." xml:space="preserve">
+    <value>Carregando linha do tempo...</value>
+  </data>
+  <data name="Error loading timeline: {0}" xml:space="preserve">
+    <value>Erro ao carregar linha do tempo: {0}</value>
+  </data>
+  <data name="No timeline items found" xml:space="preserve">
+    <value>Nenhum item encontrado na linha do tempo</value>
+  </data>
+  <data name="Timeline items will appear here as they are created" xml:space="preserve">
+    <value>Os itens da linha do tempo aparecerão aqui conforme forem criados</value>
+  </data>
+  <data name="Pinned" xml:space="preserve">
+    <value>Fixado</value>
+  </data>
+  <data name="Private" xml:space="preserve">
+    <value>Privado</value>
+  </data>
+  <data name="Load More" xml:space="preserve">
+    <value>Carregar Mais</value>
+  </data>
+  <data name="Just now" xml:space="preserve">
+    <value>Agora</value>
+  </data>
+  <data name="{0} minutes ago" xml:space="preserve">
+    <value>há {0} minutos</value>
+  </data>
+  <data name="{0} hours ago" xml:space="preserve">
+    <value>há {0} horas</value>
+  </data>
+  <data name="{0} days ago" xml:space="preserve">
+    <value>há {0} dias</value>
+  </data>
+  <data name="{0} weeks ago" xml:space="preserve">
+    <value>há {0} semanas</value>
+  </data>
+  <data name="{0} months ago" xml:space="preserve">
+    <value>há {0} meses</value>
+  </data>
+  <data name="{0} sec" xml:space="preserve">
+    <value>{0} seg</value>
+  </data>
+  <data name="{0} min" xml:space="preserve">
+    <value>{0} min</value>
+  </data>
+  <data name="{0} hr {1} min" xml:space="preserve">
+    <value>{0} h {1} min</value>
+  </data>
+
+  <!-- Contact Management -->
+  <data name="Edit Contact" xml:space="preserve">
+    <value>Editar Contato</value>
+  </data>
+  <data name="New Contact" xml:space="preserve">
+    <value>Novo Contato</value>
+  </data>
+  <data name="Basic Information" xml:space="preserve">
+    <value>Informações Básicas</value>
+  </data>
+  <data name="Client *" xml:space="preserve">
+    <value>Cliente *</value>
+  </data>
+  <data name="Client is required" xml:space="preserve">
+    <value>O cliente é obrigatório</value>
+  </data>
+  <data name="First Name *" xml:space="preserve">
+    <value>Nome *</value>
+  </data>
+  <data name="First name is required" xml:space="preserve">
+    <value>O nome é obrigatório</value>
+  </data>
+  <data name="Last Name *" xml:space="preserve">
+    <value>Sobrenome *</value>
+  </data>
+  <data name="Last name is required" xml:space="preserve">
+    <value>O sobrenome é obrigatório</value>
+  </data>
+  <data name="Email *" xml:space="preserve">
+    <value>E-mail *</value>
+  </data>
+  <data name="Mobile Phone" xml:space="preserve">
+    <value>Celular</value>
+  </data>
+  <data name="Job Title" xml:space="preserve">
+    <value>Cargo</value>
+  </data>
+  <data name="Department" xml:space="preserve">
+    <value>Departamento</value>
+  </data>
+  <data name="Address Information" xml:space="preserve">
+    <value>Informações de Endereço</value>
+  </data>
+  <data name="Address" xml:space="preserve">
+    <value>Endereço</value>
+  </data>
+  <data name="City" xml:space="preserve">
+    <value>Cidade</value>
+  </data>
+  <data name="State" xml:space="preserve">
+    <value>Estado</value>
+  </data>
+  <data name="Postal Code" xml:space="preserve">
+    <value>CEP</value>
+  </data>
+  <data name="Contact Information" xml:space="preserve">
+    <value>Informações de Contato</value>
+  </data>
+  <data name="Contact Type *" xml:space="preserve">
+    <value>Tipo de Contato *</value>
+  </data>
+  <data name="Status *" xml:space="preserve">
+    <value>Status *</value>
+  </data>
+  <data name="Main Contact" xml:space="preserve">
+    <value>Contato Principal</value>
+  </data>
+  <data name="Decision Maker" xml:space="preserve">
+    <value>Decisor</value>
+  </data>
+  <data name="Birth Date" xml:space="preserve">
+    <value>Data de Nascimento</value>
+  </data>
+  <data name="Last Contact Date" xml:space="preserve">
+    <value>Data do Último Contato</value>
+  </data>
+  <data name="Tags" xml:space="preserve">
+    <value>Tags</value>
+  </data>
+  <data name="Separate tags with commas" xml:space="preserve">
+    <value>Separar tags com vírgulas</value>
+  </data>
+  <data name="Contact updated successfully" xml:space="preserve">
+    <value>Contato atualizado com sucesso</value>
+  </data>
+  <data name="Failed to update contact" xml:space="preserve">
+    <value>Falha ao atualizar contato</value>
+  </data>
+  <data name="Contact created successfully" xml:space="preserve">
+    <value>Contato criado com sucesso</value>
+  </data>
+  <data name="Failed to create contact" xml:space="preserve">
+    <value>Falha ao criar contato</value>
+  </data>
+
+  <!-- Contact Types -->
+  <data name="Lead" xml:space="preserve">
+    <value>Prospecção</value>
+  </data>
+  <data name="Partner" xml:space="preserve">
+    <value>Parceiro</value>
+  </data>
+  <data name="Vendor" xml:space="preserve">
+    <value>Fornecedor</value>
+  </data>
+  <data name="Employee" xml:space="preserve">
+    <value>Funcionário</value>
+  </data>
+
+  <!-- Contact Status -->
+  <data name="Qualified" xml:space="preserve">
+    <value>Qualificado</value>
+  </data>
+  <data name="Unqualified" xml:space="preserve">
+    <value>Não Qualificado</value>
+  </data>
+
+  <!-- Contact List and Navigation -->
+  <data name="Contact Management" xml:space="preserve">
+    <value>Gestão de Contatos</value>
+  </data>
+  <data name="Contacts for:" xml:space="preserve">
+    <value>Contatos para:</value>
+  </data>
+  <data name="Clear Filter" xml:space="preserve">
+    <value>Limpar Filtro</value>
+  </data>
+  <data name="Manage contacts and their relationships with clients" xml:space="preserve">
+    <value>Gerencie contatos e seus relacionamentos com clientes</value>
+  </data>
+  <data name="Search contacts..." xml:space="preserve">
+    <value>Pesquisar contatos...</value>
+  </data>
+  <data name="View Mode:" xml:space="preserve">
+    <value>Modo de Visualização:</value>
+  </data>
+  <data name="All Contacts" xml:space="preserve">
+    <value>Todos os Contatos</value>
+  </data>
+  <data name="Client-Associated" xml:space="preserve">
+    <value>Associados a Clientes</value>
+  </data>
+  <data name="Standalone" xml:space="preserve">
+    <value>Independentes</value>
+  </data>
+  <data name="Loading contacts..." xml:space="preserve">
+    <value>Carregando contatos...</value>
+  </data>
+  <data name="No contacts found" xml:space="preserve">
+    <value>Nenhum contato encontrado</value>
+  </data>
+  <data name="Create your first contact to get started" xml:space="preserve">
+    <value>Crie seu primeiro contato para começar</value>
+  </data>
+  <data name="Create First Contact" xml:space="preserve">
+    <value>Criar Primeiro Contato</value>
+  </data>
+  <data name="Role" xml:space="preserve">
+    <value>Papel</value>
+  </data>
+  <data name="Main" xml:space="preserve">
+    <value>Principal</value>
+  </data>
+  <data name="Decision" xml:space="preserve">
+    <value>Decisão</value>
+  </data>
+  <data name="Error loading contacts: {0}" xml:space="preserve">
+    <value>Erro ao carregar contatos: {0}</value>
+  </data>
+  <data name="Error loading client information: {0}" xml:space="preserve">
+    <value>Erro ao carregar informações do cliente: {0}</value>
+  </data>
+  <data name="Are you sure you want to delete the contact '{0}'? This action cannot be undone." xml:space="preserve">
+    <value>Tem certeza de que deseja excluir o contato '{0}'? Esta ação não pode ser desfeita.</value>
+  </data>
+  <data name="Delete Contact" xml:space="preserve">
+    <value>Excluir Contato</value>
+  </data>
+  <data name="Contact deleted successfully" xml:space="preserve">
+    <value>Contato excluído com sucesso</value>
+  </data>
+  <data name="Failed to delete contact" xml:space="preserve">
+    <value>Falha ao excluir contato</value>
+  </data>
+
+  <!-- Activity Form Labels -->
+  <data name="Duration (minutes)" xml:space="preserve">
+    <value>Duração (minutos)</value>
+  </data>
+  <data name="Reminder Date" xml:space="preserve">
+    <value>Data do Lembrete</value>
+  </data>
+  <data name="Regarding Type" xml:space="preserve">
+    <value>Tipo de Referência</value>
+  </data>
+  <data name="Regarding ID (GUID)" xml:space="preserve">
+    <value>ID de Referência (GUID)</value>
+  </data>
+  <data name="Assigned To User ID" xml:space="preserve">
+    <value>Atribuído ao ID do Usuário</value>
+  </data>
+  <data name="Subject is required" xml:space="preserve">
+    <value>O assunto é obrigatório</value>
+  </data>
+
+  <!-- Additional Activity Types -->
+  <data name="WhatsApp Message" xml:space="preserve">
+    <value>Mensagem WhatsApp</value>
+  </data>
+  <data name="WhatsApp Flow" xml:space="preserve">
+    <value>Fluxo WhatsApp</value>
+  </data>
+  <data name="SMS" xml:space="preserve">
+    <value>SMS</value>
+  </data>
+  <data name="Instagram DM" xml:space="preserve">
+    <value>Direct Instagram</value>
+  </data>
+  <data name="Facebook Message" xml:space="preserve">
+    <value>Mensagem Facebook</value>
+  </data>
+  <data name="LinkedIn Message" xml:space="preserve">
+    <value>Mensagem LinkedIn</value>
+  </data>
+  <data name="Twitter DM" xml:space="preserve">
+    <value>Direct Twitter</value>
+  </data>
+  <data name="Web Chat" xml:space="preserve">
+    <value>Chat Web</value>
+  </data>
+  <data name="Chatbot" xml:space="preserve">
+    <value>Chatbot</value>
+  </data>
+  <data name="Event" xml:space="preserve">
+    <value>Evento</value>
+  </data>
+  <data name="Webinar" xml:space="preserve">
+    <value>Webinar</value>
+  </data>
+  <data name="Presentation" xml:space="preserve">
+    <value>Apresentação</value>
+  </data>
+  <data name="Workshop" xml:space="preserve">
+    <value>Workshop</value>
+  </data>
+  <data name="Newsletter" xml:space="preserve">
+    <value>Newsletter</value>
+  </data>
+  <data name="Survey" xml:space="preserve">
+    <value>Pesquisa</value>
+  </data>
+  <data name="Note" xml:space="preserve">
+    <value>Nota</value>
+  </data>
+  <data name="Document" xml:space="preserve">
+    <value>Documento</value>
+  </data>
+  <data name="Other" xml:space="preserve">
+    <value>Outro</value>
+  </data>
+
+  <!-- Regarding Types -->
+  <data name="None" xml:space="preserve">
+    <value>Nenhum</value>
+  </data>
+  <data name="Opportunity" xml:space="preserve">
+    <value>Oportunidade</value>
+  </data>
+  <data name="Case" xml:space="preserve">
+    <value>Caso</value>
+  </data>
+  <data name="Project" xml:space="preserve">
+    <value>Projeto</value>
+  </data>
+
+  <!-- Activity Form Actions and Messages -->
+  <data name="Update" xml:space="preserve">
+    <value>Atualizar</value>
+  </data>
+  <data name="Please fix validation errors" xml:space="preserve">
+    <value>Por favor, corrija os erros de validação</value>
+  </data>
+  <data name="Activity updated successfully" xml:space="preserve">
+    <value>Atividade atualizada com sucesso</value>
+  </data>
+  <data name="Activity created successfully" xml:space="preserve">
+    <value>Atividade criada com sucesso</value>
+  </data>
+  <data name="Failed to update activity" xml:space="preserve">
+    <value>Falha ao atualizar atividade</value>
+  </data>
+  <data name="Failed to create activity" xml:space="preserve">
+    <value>Falha ao criar atividade</value>
+  </data>
+
+  <!-- Helper Texts -->
+  <data name="Enter the GUID of the related entity" xml:space="preserve">
+    <value>Digite o GUID da entidade relacionada</value>
+  </data>
+  <data name="Select a Regarding Type first" xml:space="preserve">
+    <value>Selecione primeiro um Tipo de Referência</value>
+  </data>
+  <data name="Leave empty to assign to yourself" xml:space="preserve">
+    <value>Deixe em branco para atribuir a si mesmo</value>
+  </data>
 </root>

@@ -89,20 +89,6 @@ public static class NavbarMenu
                 },
                 new MenuItem
                 {
-                    Label = "Customers",
-                    SubItems = new List<MenuItem>
-                    {
-                        new MenuItem
-                        {
-                            Label = "All Customers",
-                            Href = "/customers/index",
-                            Status = PageStatus.Completed,
-                            Description = "Manage all customer information."
-                        }
-                    }
-                },
-                new MenuItem
-                {
                     Label = "CRM",
                     SubItems = new List<MenuItem>
                     {
@@ -153,7 +139,7 @@ public static class NavbarMenu
                             Label = "Order Overview",
                             Href = "/orders/overview",
                             Status = PageStatus.ComingSoon,
-                            Description = "Overview of all customer orders."
+                            Description = "Overview of all orders."
                         },
                         new MenuItem
                         {

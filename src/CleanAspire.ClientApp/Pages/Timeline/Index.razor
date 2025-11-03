@@ -376,16 +376,45 @@
             var httpClient = HttpClientFactory.CreateClient("apiservice");
             var endpoint = _selectedOwnerType.Value switch
             {
-                OwnerType.Client => "/api/crm/clients/list",
-                OwnerType.Contact => "/api/crm/contacts/list",
+                OwnerType.Client => "/api/crm/clients/",
+                OwnerType.Contact => "/api/crm/contacts/",
                 _ => throw new NotSupportedException($"Owner type {_selectedOwnerType} not supported")
             };
 
             var response = await httpClient.GetAsync(endpoint);
             if (response.IsSuccessStatusCode)
             {
-                var entities = await response.Content.ReadFromJsonAsync<List<EntityDto>>();
-                _availableEntities = entities ?? new List<EntityDto>();
+                _availableEntities.Clear();
+
+                if (_selectedOwnerType.Value == OwnerType.Client)
+                {
+                    var clients = await response.Content.ReadFromJsonAsync<List<ClientDto>>();
+                    if (clients != null)
+                    {
+                        _availableEntities = clients.Select(c => new EntityDto
+                        {
+                            Id = Guid.Parse(c.Id),
+                            DisplayName = c.DisplayName
+                        }).ToList();
+                    }
+                }
+                else if (_selectedOwnerType.Value == OwnerType.Contact)
+                {
+                    var contacts = await response.Content.ReadFromJsonAsync<List<ContactDto>>();
+                    if (contacts != null)
+                    {
+                        _availableEntities = contacts.Select(c => new EntityDto
+                        {
+                            Id = Guid.Parse(c.Id),
+                            DisplayName = $"{c.FullName} - {c.ClientDisplayName}"
+                        }).ToList();
+                    }
+                }
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Error loading entities: {response.StatusCode} - {errorContent}", Severity.Error);
             }
         }
         catch (Exception ex)
@@ -665,6 +694,23 @@
     }
 
     // DTO classes
+    public class ClientDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string? TradeName { get; set; }
+        public string DisplayName => !string.IsNullOrEmpty(TradeName) ? TradeName : Name;
+    }
+
+    public class ContactDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string ClientDisplayName { get; set; } = string.Empty;
+        public string FullName => $"{FirstName} {LastName}".Trim();
+    }
+
     public class EntityDto
     {
         public Guid Id { get; set; }

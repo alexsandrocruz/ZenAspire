@@ -222,9 +222,6 @@
   <data name="Currency is required" xml:space="preserve">
     <value>Währung ist erforderlich</value>
   </data>
-  <data name="Customer Name" xml:space="preserve">
-    <value>Kundenname</value>
-  </data>
   <data name="Default" xml:space="preserve">
     <value>Standard</value>
   </data>
@@ -599,9 +596,6 @@
   </data>
   <data name="Order Overview" xml:space="preserve">
     <value>Bestellübersicht</value>
-  </data>
-  <data name="Overview of all customer orders." xml:space="preserve">
-    <value>Übersicht über alle Kundenbestellungen.</value>
   </data>
   <data name="Shipment Details" xml:space="preserve">
     <value>Versanddetails</value>

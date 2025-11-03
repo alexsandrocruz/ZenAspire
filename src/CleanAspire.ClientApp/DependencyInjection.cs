@@ -8,7 +8,6 @@ using CleanAspire.ClientApp.Services.Identity;
 using CleanAspire.ClientApp.Services.Interfaces;
 using CleanAspire.ClientApp.Services.JsInterop;
 using CleanAspire.ClientApp.Services.Products;
-using CleanAspire.ClientApp.Services.Customers;
 using CleanAspire.ClientApp.Services.Clients;
 using CleanAspire.ClientApp.Services.Contacts;
 using CleanAspire.ClientApp.Services.Activities;
@@ -77,7 +76,6 @@ public static class DependencyInjection
 
         // Service Proxies with proper HttpClient configuration
         services.AddScoped<ProductServiceProxy>();
-        services.AddScoped<CustomerServiceProxy>();
         services.AddScoped<ClientServiceProxy>(sp =>
         {
             var httpClientFactory = sp.GetRequiredService<IHttpClientFactory>();

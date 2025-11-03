@@ -228,10 +228,7 @@
   <data name="Currency is required" xml:space="preserve">
     <value>Currency is required</value>
   </data>
-  <data name="Customer Name" xml:space="preserve">
-    <value>Customer Name</value>
-  </data>
-  <data name="Default" xml:space="preserve">
+    <data name="Default" xml:space="preserve">
     <value>Default</value>
   </data>
   <data name="Delete" xml:space="preserve">
@@ -600,10 +597,7 @@
   <data name="Order Overview" xml:space="preserve">
     <value>Order Overview</value>
   </data>
-  <data name="Overview of all customer orders." xml:space="preserve">
-    <value>Overview of all customer orders.</value>
-  </data>
-  <data name="Shipment Details" xml:space="preserve">
+    <data name="Shipment Details" xml:space="preserve">
     <value>Shipment Details</value>
   </data>
   <data name="Track the shipment details of orders." xml:space="preserve">

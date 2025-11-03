@@ -27,7 +27,9 @@
                 </MudButton>
                 <MudButton Variant="Variant.Outlined"
                            StartIcon="@Icons.Material.Filled.StickyNote2"
-                           OnClick="CreateNote">
+                           OnClick="CreateNote"
+                           Disabled="@(!_selectedOwnerType.HasValue || !_selectedOwnerId.HasValue)"
+                           Title="@(!_selectedOwnerType.HasValue || !_selectedOwnerId.HasValue ? "Select an entity first" : "Create new note")">
                     New Note
                 </MudButton>
                 <MudButton Variant="Variant.Filled"
@@ -630,8 +632,19 @@
 
     private async Task CreateNote()
     {
-        var parameters = new DialogParameters();
-        // You might want to add owner selection here
+        // Check if user has selected an entity first
+        if (!_selectedOwnerType.HasValue || !_selectedOwnerId.HasValue)
+        {
+            Snackbar.Add("Please select an entity (Client/Contact) before creating a note", Severity.Warning);
+            return;
+        }
+
+        var parameters = new DialogParameters
+        {
+            { "OwnerType", _selectedOwnerType.Value },
+            { "OwnerId", _selectedOwnerId.Value }
+        };
+
         var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
         var dialog = await DialogService.ShowAsync<NoteDialog>("Create Note", parameters, options);
         var result = await dialog.Result;

@@ -22,7 +22,42 @@ public enum OwnerType
 public class TimelineItemDto
 {
     public string Id { get; set; } = string.Empty;
+
+    [System.Text.Json.Serialization.JsonIgnore]
     public TimelineItemType Type { get; set; }
+
+    [System.Text.Json.Serialization.JsonPropertyName("type")]
+    public object TypeValue
+    {
+        get => (int)Type;
+        set
+        {
+            if (value is int intValue)
+            {
+                Type = (TimelineItemType)intValue;
+            }
+            else if (value is string stringValue && int.TryParse(stringValue, out int parsedInt))
+            {
+                Type = (TimelineItemType)parsedInt;
+            }
+            else if (value is string stringValue2)
+            {
+                // Try to parse by enum name
+                Type = stringValue2 switch
+                {
+                    "Activity" => TimelineItemType.Activity,
+                    "Interaction" => TimelineItemType.Interaction,
+                    "Note" => TimelineItemType.Note,
+                    _ => TimelineItemType.Activity // Default fallback
+                };
+            }
+            else
+            {
+                Type = TimelineItemType.Activity; // Default fallback
+            }
+        }
+    }
+
     public DateTime Date { get; set; }
     public string Title { get; set; } = string.Empty;
     public string? Description { get; set; }

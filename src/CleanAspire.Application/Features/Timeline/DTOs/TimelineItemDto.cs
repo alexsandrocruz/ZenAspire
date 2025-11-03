@@ -18,7 +18,14 @@ public class TimelineItemDto
     /// <summary>
     /// Type of timeline item (Activity, Interaction, Note)
     /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
     public TimelineItemType Type { get; set; }
+
+    /// <summary>
+    /// Type as integer for JSON serialization
+    /// </summary>
+    [System.Text.Json.Serialization.JsonPropertyName("type")]
+    public int TypeAsInt => (int)Type;
 
     /// <summary>
     /// Date/time of the timeline item

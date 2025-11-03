@@ -129,13 +129,22 @@ public class GetTimelineQueryHandler : IRequestHandler<GetTimelineQuery, Paginat
     /// </summary>
     private async Task<List<TimelineItemDto>> GetActivitiesAsync(GetTimelineQuery request, CancellationToken cancellationToken)
     {
-        // Map OwnerType to RegardingType
-        // OwnerType and RegardingType have similar values (Client=1, Contact=2, etc.)
-        var regardingType = (RegardingType)(int)request.OwnerType;
-
         var query = _context.Activities
-            .Where(a => a.TenantId == _currentUser.TenantId)
-            .Where(a => a.RegardingType == regardingType && a.RegardingId == request.OwnerId);
+            .Where(a => a.TenantId == _currentUser.TenantId);
+
+        // If filtering by specific entity, include both entity-specific and general activities
+        if (request.OwnerType != default && request.OwnerId != Guid.Empty)
+        {
+            // Map OwnerType to RegardingType
+            // OwnerType and RegardingType have similar values (Client=1, Contact=2, etc.)
+            var regardingType = (RegardingType)(int)request.OwnerType;
+
+            query = query.Where(a =>
+                // Activities specifically for this entity
+                (a.RegardingType == regardingType && a.RegardingId == request.OwnerId) ||
+                // OR general activities not associated with any entity
+                (a.RegardingType == null || a.RegardingId == null));
+        }
 
         // Apply date range filter
         if (request.StartDate.HasValue)

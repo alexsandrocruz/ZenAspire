@@ -44,17 +44,20 @@ public class TimelineEndpointRegistrar(ILogger<TimelineEndpointRegistrar> logger
             [FromQuery] int pageNumber = 1,
             [FromQuery] int pageSize = 20) =>
         {
-            // If no ownerType/ownerId specified, we'll need to create a different query for global timeline
-            // For now, return empty result for global timeline
-            // TODO: Implement GetGlobalTimelineQuery for truly global timeline
+            // If no ownerType/ownerId specified, get global timeline (all activities not tied to specific entities)
             if (!ownerType.HasValue || !ownerId.HasValue)
             {
-                return new PaginatedResult<TimelineItemDto>(
-                    Enumerable.Empty<TimelineItemDto>(),
-                    0,
-                    pageNumber,
-                    pageSize
-                );
+                // For global timeline, use empty values to get all activities
+                return await mediator.Send(new GetTimelineQuery
+                {
+                    OwnerType = default, // Empty to get all activities
+                    OwnerId = Guid.Empty, // Empty to get all activities
+                    StartDate = startDate,
+                    EndDate = endDate,
+                    TypeFilter = typeFilter.HasValue ? (TimelineItemType)typeFilter.Value : null,
+                    PageNumber = pageNumber,
+                    PageSize = pageSize
+                });
             }
 
             return await mediator.Send(new GetTimelineQuery

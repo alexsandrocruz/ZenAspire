@@ -80,6 +80,12 @@ public interface IApplicationDbContext
     DbSet<Interaction> Interactions { get; set; }
 
     /// <summary>
+    /// Gets or sets the Consents DbSet.
+    /// Phase 4: LGPD Compliance - Consent & Data Privacy
+    /// </summary>
+    DbSet<Consent> Consents { get; set; }
+
+    /// <summary>
     /// Saves all changes made in this context to the database.
     /// </summary>
     /// <param name="cancellationToken">A CancellationToken to observe while waiting for the task to complete.</param>

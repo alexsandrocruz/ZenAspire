@@ -1,0 +1,158 @@
+using CleanAspire.Application.Features.Consents.Commands;
+using CleanAspire.Application.Features.Consents.Queries;
+using CleanAspire.Domain.Enums;
+using FluentValidation;
+
+namespace CleanAspire.Application.Features.Consents.Validators;
+
+/// <summary>
+/// Validator for RecordConsentCommand.
+/// Uses FluentValidation to apply validation rules for consent recording.
+/// Phase 4: LGPD Compliance - Consent & Data Privacy
+/// </summary>
+public class RecordConsentCommandValidator : AbstractValidator<RecordConsentCommand>
+{
+    /// <summary>
+    /// Initializes validation rules for consent recording fields.
+    /// </summary>
+    public RecordConsentCommandValidator()
+    {
+        // Validate OwnerType (required, valid enum value)
+        RuleFor(command => command.OwnerType)
+            .Must(ownerType => Enum.IsDefined(typeof(OwnerType), ownerType))
+            .WithMessage("Invalid OwnerType value.");
+
+        // Validate OwnerId (required, not empty)
+        RuleFor(command => command.OwnerId)
+            .NotEmpty().WithMessage("OwnerId is required.")
+            .NotEqual(Guid.Empty).WithMessage("OwnerId cannot be empty.");
+
+        // Validate Purpose (required, valid enum value)
+        RuleFor(command => command.Purpose)
+            .Must(purpose => Enum.IsDefined(typeof(ConsentPurpose), purpose))
+            .WithMessage("Invalid ConsentPurpose value.");
+
+        // Validate Channel (required, max length 100)
+        RuleFor(command => command.Channel)
+            .NotEmpty().WithMessage("Channel is required.")
+            .MaximumLength(100).WithMessage("Channel must not exceed 100 characters.");
+
+        // Validate At (optional, must be in past or present)
+        RuleFor(command => command.At)
+            .LessThanOrEqualTo(DateTime.UtcNow).WithMessage("Consent date cannot be in the future.")
+            .When(command => command.At.HasValue);
+
+        // Validate Source (max length 200)
+        RuleFor(command => command.Source)
+            .MaximumLength(200).WithMessage("Source must not exceed 200 characters.");
+
+        // Validate IpAddress (valid IP address format, max length 45)
+        RuleFor(command => command.IpAddress)
+            .Must(ip => System.Net.IPAddress.TryParse(ip, out _)).WithMessage("Invalid IP address format.")
+            .When(command => !string.IsNullOrEmpty(command.IpAddress))
+            .MaximumLength(45).WithMessage("IP address must not exceed 45 characters.");
+
+        // Validate UserAgent (max length 500)
+        RuleFor(command => command.UserAgent)
+            .MaximumLength(500).WithMessage("User agent must not exceed 500 characters.");
+
+        // Validate Notes (max length 1000)
+        RuleFor(command => command.Notes)
+            .MaximumLength(1000).WithMessage("Notes must not exceed 1000 characters.");
+
+        // Validate ValidUntil (must be in future if provided)
+        RuleFor(command => command.ValidUntil)
+            .GreaterThan(DateTime.UtcNow).WithMessage("ValidUntil date must be in the future.")
+            .When(command => command.ValidUntil.HasValue);
+
+        // Custom validation: If OptIn is false, require notes explaining withdrawal
+        RuleFor(command => command.Notes)
+            .NotEmpty().WithMessage("Notes are required when withdrawing consent.")
+            .When(command => !command.OptIn);
+
+        // Custom validation: ValidUntil should not be too far in the future (e.g., max 5 years)
+        RuleFor(command => command.ValidUntil)
+            .LessThanOrEqualTo(DateTime.UtcNow.AddYears(5)).WithMessage("Consent validity period cannot exceed 5 years.")
+            .When(command => command.ValidUntil.HasValue);
+    }
+}
+
+/// <summary>
+/// Validator for GetConsentsByOwnerQuery.
+/// </summary>
+public class GetConsentsByOwnerQueryValidator : AbstractValidator<GetConsentsByOwnerQuery>
+{
+    public GetConsentsByOwnerQueryValidator()
+    {
+        // Validate OwnerType (required, valid enum value)
+        RuleFor(query => query.OwnerType)
+            .Must(ownerType => Enum.IsDefined(typeof(OwnerType), ownerType))
+            .WithMessage("Invalid OwnerType value.");
+
+        // Validate OwnerId (required, not empty)
+        RuleFor(query => query.OwnerId)
+            .NotEmpty().WithMessage("OwnerId is required.")
+            .NotEqual(Guid.Empty).WithMessage("OwnerId cannot be empty.");
+    }
+}
+
+/// <summary>
+/// Validator for GetConsentByIdQuery.
+/// </summary>
+public class GetConsentByIdQueryValidator : AbstractValidator<GetConsentByIdQuery>
+{
+    public GetConsentByIdQueryValidator()
+    {
+        // Validate Id (required, not empty)
+        RuleFor(query => query.Id)
+            .NotEmpty().WithMessage("Consent ID is required.");
+    }
+}
+
+/// <summary>
+/// Validator for RequestDataExportCommand.
+/// </summary>
+public class RequestDataExportCommandValidator : AbstractValidator<RequestDataExportCommand>
+{
+    public RequestDataExportCommandValidator()
+    {
+        // Validate OwnerType (required, valid enum value)
+        RuleFor(command => command.OwnerType)
+            .Must(ownerType => Enum.IsDefined(typeof(OwnerType), ownerType))
+            .WithMessage("Invalid OwnerType value.");
+
+        // Validate OwnerId (required, not empty)
+        RuleFor(command => command.OwnerId)
+            .NotEmpty().WithMessage("OwnerId is required.")
+            .NotEqual(Guid.Empty).WithMessage("OwnerId cannot be empty.");
+
+        // Validate Format (required, must be JSON or CSV)
+        RuleFor(command => command.Format)
+            .NotEmpty().WithMessage("Format is required.")
+            .Must(format => format.ToUpperInvariant() == "JSON" || format.ToUpperInvariant() == "CSV")
+            .WithMessage("Format must be 'JSON' or 'CSV'.");
+    }
+}
+
+/// <summary>
+/// Validator for RequestErasureCommand.
+/// </summary>
+public class RequestErasureCommandValidator : AbstractValidator<RequestErasureCommand>
+{
+    public RequestErasureCommandValidator()
+    {
+        // Validate OwnerType (required, valid enum value)
+        RuleFor(command => command.OwnerType)
+            .Must(ownerType => Enum.IsDefined(typeof(OwnerType), ownerType))
+            .WithMessage("Invalid OwnerType value.");
+
+        // Validate OwnerId (required, not empty)
+        RuleFor(command => command.OwnerId)
+            .NotEmpty().WithMessage("OwnerId is required.")
+            .NotEqual(Guid.Empty).WithMessage("OwnerId cannot be empty.");
+
+        // Validate Reason (max length 500)
+        RuleFor(command => command.Reason)
+            .MaximumLength(500).WithMessage("Reason must not exceed 500 characters.");
+    }
+}

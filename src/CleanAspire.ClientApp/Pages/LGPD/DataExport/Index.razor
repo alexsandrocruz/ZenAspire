@@ -1,0 +1,507 @@
+@page "/lgpd/export"
+@layout ApplicationLayout
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+<PageTitle>Data Export</PageTitle>
+
+<style>
+    .export-card {
+        transition: all 0.3s ease;
+    }
+    .export-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+    .format-option {
+        transition: all 0.2s ease;
+    }
+    .format-option:hover {
+        background-color: var(--mud-palette-action-default-hover);
+    }
+    .format-option.selected {
+        border: 2px solid var(--mud-palette-primary);
+    }
+    .data-category {
+        transition: all 0.2s ease;
+    }
+    .data-category:hover {
+        background-color: var(--mud-palette-action-default-hover);
+    }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudStack Spacing="4">
+        <!-- Header -->
+        <MudPaper Elevation="2" Class="pa-6">
+            <MudStack Spacing="2">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.h4">
+                        <MudIcon Icon="@Icons.Material.Filled.Download" Class="mr-2" />
+                        Export Personal Data
+                    </MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">
+                        Download your personal data in compliance with LGPD regulations. Choose format and scope for your export request.
+                    </MudText>
+                </MudStack>
+
+                <MudAlert Severity="Severity.Info" Class="mb-2">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.body1">
+                            <strong>LGPD Right to Data Portability:</strong>
+                        </MudText>
+                        <MudText Typo="Typo.body2">
+                            You have the right to request a copy of your personal data in a structured, commonly used format.
+                        </MudText>
+                    </MudStack>
+                </MudAlert>
+            </MudStack>
+        </MudPaper>
+
+        <!-- Export Form -->
+        <MudPaper Elevation="1" Class="pa-6">
+            <MudStack Spacing="4">
+                <EditForm Model="@exportForm" OnValidSubmit="HandleSubmit">
+                    <!-- Data Subject Selection -->
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h6">1. Select Data Subject</MudText>
+
+                        <MudSelect T="int" Label="Owner Type" @bind-Value="exportForm.OwnerType" Required="true">
+                            <MudSelectItem T="int" Value="1">Client</MudSelectItem>
+                            <MudSelectItem T="int" Value="2">Contact</MudSelectItem>
+                        </MudSelect>
+
+                        @if (exportForm.OwnerType == 1)
+                        {
+                            <MudSelect T="string" Label="Select Client" @bind-Value="exportForm.OwnerIdString" Required="true">
+                                @if (clients.Any())
+                                {
+                                    @foreach (var client in clients)
+                                    {
+                                        <MudSelectItem T="string" Value="@client.Id">@client.Name</MudSelectItem>
+                                    }
+                                }
+                                else
+                                {
+                                    <MudSelectItem T="string" Value="@string.Empty" Disabled="true">No clients available</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+                        else if (exportForm.OwnerType == 2)
+                        {
+                            <MudSelect T="string" Label="Select Contact" @bind-Value="exportForm.OwnerIdString" Required="true">
+                                @if (contacts.Any())
+                                {
+                                    @foreach (var contact in contacts)
+                                    {
+                                        <MudSelectItem T="string" Value="@contact.Id">@contact.FirstName @contact.LastName</MudSelectItem>
+                                    }
+                                }
+                                else
+                                {
+                                    <MudSelectItem T="string" Value="@string.Empty" Disabled="true">No contacts available</MudSelectItem>
+                                }
+                            </MudSelect>
+                        }
+                    </MudStack>
+
+                    <!-- Export Format -->
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h6">2. Choose Export Format</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Select the format for your data export
+                        </MudText>
+
+                        <MudRadioGroup @bind-Value="@exportForm.Format">
+                            <MudPaper Class="@(GetFormatClass("JSON"))"
+                                     Elevation="1"
+                                     @onclick="@(() => SelectFormat("JSON"))">
+                                <MudStack Spacing="2">
+                                    <MudStack Direction="Direction.Horizontal" Spacing="2" AlignItems="AlignItems.Center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Code" Color="Color.Primary" Size="Size.Medium" />
+                                        <MudStack Spacing="0">
+                                            <MudText Typo="Typo.subtitle1">JSON Format</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                Structured data format, ideal for developers and system integration
+                                            </MudText>
+                                        </MudStack>
+                                    </MudStack>
+                                </MudStack>
+                            </MudPaper>
+
+                            <MudPaper Class="@(GetFormatClass("CSV"))"
+                                     Elevation="1"
+                                     @onclick="@(() => SelectFormat("CSV"))">
+                                <MudStack Spacing="2">
+                                    <MudStack Direction="Direction.Horizontal" Spacing="2" AlignItems="AlignItems.Center">
+                                        <MudIcon Icon="@Icons.Material.Filled.TableChart" Color="Color.Success" Size="Size.Medium" />
+                                        <MudStack Spacing="0">
+                                            <MudText Typo="Typo.subtitle1">CSV Format</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                Spreadsheet format, perfect for Excel and data analysis tools
+                                            </MudText>
+                                        </MudStack>
+                                    </MudStack>
+                                </MudStack>
+                            </MudPaper>
+                        </MudRadioGroup>
+
+                        <MudTextField T="string" Label="Selected Format" @bind-Value="exportForm.Format" Required="true" Hidden="true" />
+                    </MudStack>
+
+                    <!-- Data Categories -->
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h6">3. Select Data Categories</MudText>
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Choose which data categories to include in your export
+                        </MudText>
+
+                        <MudGrid Container="true" Spacing="2">
+                            @foreach (var category in dataCategories)
+                            {
+                                <MudItem xs="12" md="6">
+                                    <MudPaper Class="@(GetCategoryClass(category.Selected))"
+                                             Elevation="1"
+                                             @onclick="@(() => ToggleCategory(category))">
+                                        <MudStack Direction="Direction.Horizontal" Spacing="2">
+                                            <MudCheckBox @bind-Value="@category.Selected" />
+                                            <MudStack Spacing="0">
+                                                <MudText Typo="Typo.subtitle1">@category.Name</MudText>
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary">@category.Description</MudText>
+                                            </MudStack>
+                                        </MudStack>
+                                    </MudPaper>
+                                </MudItem>
+                            }
+                        </MudGrid>
+
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                            Selected categories: @dataCategories.Count(c => c.Selected) of @dataCategories.Count
+                        </MudText>
+                    </MudStack>
+
+                    <!-- Processing Options -->
+                    <MudStack Spacing="2">
+                        <MudText Typo="Typo.h6">4. Processing Options</MudText>
+
+                        <MudCheckBox @bind-Value="exportForm.IncludeInactive" Label="Include inactive/expired data" />
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ml-8">
+                            Include data that has been marked as inactive or expired
+                        </MudText>
+
+                        <MudCheckBox @bind-Value="exportForm.IncludeConsents" Label="Include consent history" />
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="ml-8">
+                            Include all consent records and changes over time
+                        </MudText>
+                    </MudStack>
+
+                    <!-- Submit Actions -->
+                    <MudStack Spacing="2" Class="mt-4">
+                        <MudButton Type="submit"
+                                  Variant="Variant.Filled"
+                                  Color="Color.Primary"
+                                  StartIcon="@Icons.Material.Filled.Download"
+                                  Size="Size.Large"
+                                  Disabled="@(isSubmitting || !HasSelectedCategories)"
+                                  FullWidth="true">
+                            @(isSubmitting ? "Processing..." : "Request Data Export")
+                        </MudButton>
+
+                        <MudButton Variant="Variant.Outlined"
+                                  Color="Color.Secondary"
+                                  StartIcon="@Icons.Material.Filled.Cancel"
+                                  OnClick="@(() => Navigation.NavigateTo("/lgpd"))"
+                                  Disabled="@isSubmitting">
+                            Cancel
+                        </MudButton>
+                    </MudStack>
+                </EditForm>
+            </MudStack>
+        </MudPaper>
+
+        <!-- Recent Exports -->
+        <MudPaper Elevation="1" Class="pa-6">
+            <MudStack Spacing="3">
+                <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudText Typo="Typo.h6">Recent Export Requests</MudText>
+                    <MudButton Variant="Variant.Text" Size="Size.Small" OnClick="@LoadRecentExports">
+                        <MudIcon Icon="@Icons.Material.Filled.Refresh" Class="mr-1" />
+                        Refresh
+                    </MudButton>
+                </MudStack>
+
+                @if (recentExports.Any())
+                {
+                    <MudList T="RecentExportRecord" Dense="true">
+                        @foreach (var export in recentExports)
+                        {
+                            <MudListItem T="RecentExportRecord" Value="@export">
+                                <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="w-100">
+                                    <MudStack Spacing="1">
+                                        <MudStack Direction="Direction.Horizontal" Spacing="1" AlignItems="AlignItems.Center">
+                                            <MudText Typo="Typo.body1">@export.OwnerName</MudText>
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Text="@export.Format" />
+                                        </MudStack>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            @export.RequestedAt.ToString("MMM dd, yyyy HH:mm")
+                                        </MudText>
+                                    </MudStack>
+                                    <MudStack Direction="Direction.Horizontal" Spacing="1" AlignItems="AlignItems.Center">
+                                        <MudChip T="string" Size="Size.Small"
+                                                Color="@GetStatusChipColor(export.Status)"
+                                                Variant="Variant.Filled"
+                                                Text="@export.Status" />
+                                        @if (export.Status == "Completed" && !string.IsNullOrEmpty(export.DownloadUrl))
+                                        {
+                                            <MudButton Size="Size.Small"
+                                                      Variant="Variant.Outlined"
+                                                      StartIcon="@Icons.Material.Filled.Download"
+                                                      OnClick="@(() => DownloadFile(export))">
+                                                Download
+                                            </MudButton>
+                                        }
+                                    </MudStack>
+                                </MudStack>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">
+                        <MudText>No export requests found. Your recent export requests will appear here.</MudText>
+                    </MudAlert>
+                }
+            </MudStack>
+        </MudPaper>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private ExportRequestFormModel exportForm = new();
+    private bool isSubmitting = false;
+    private string selectedFormat = "JSON";
+
+    // Mock data - replace with actual API calls
+    private List<ClientDto> clients = new();
+    private List<ContactDto> contacts = new();
+    private List<ExportDataCategoryModel> dataCategories = new();
+    private List<RecentExportRecord> recentExports = new();
+
+    // Form model
+    public class ExportRequestFormModel
+    {
+        public int OwnerType { get; set; }
+        public string OwnerIdString { get; set; } = string.Empty;
+        public Guid OwnerId { get; set; }
+        public string Format { get; set; } = "JSON";
+        public List<int> Categories { get; set; } = new();
+        public bool IncludeInactive { get; set; } = false;
+        public bool IncludeConsents { get; set; } = true;
+    }
+
+    // Helper classes
+    public class ExportDataCategoryModel
+    {
+        public int Id { get; set; }
+        public string Name { get; set; } = string.Empty;
+        public string Description { get; set; } = string.Empty;
+        public bool Selected { get; set; }
+    }
+
+    public class RecentExportRecord
+    {
+        public string Id { get; set; } = string.Empty;
+        public string OwnerName { get; set; } = string.Empty;
+        public string Format { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public DateTime RequestedAt { get; set; }
+        public DateTime? CompletedAt { get; set; }
+        public string? DownloadUrl { get; set; }
+        public string? ErrorMessage { get; set; }
+    }
+
+    // DTOs (would normally be shared with backend)
+    public class ClientDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+    }
+
+    public class ContactDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            // Load owners
+            clients = new List<ClientDto>
+            {
+                new() { Id = "1", Name = "Tech Solutions Inc." },
+                new() { Id = "2", Name = "Global Services Ltd." },
+                new() { Id = "3", Name = "Digital Innovations" }
+            };
+
+            contacts = new List<ContactDto>
+            {
+                new() { Id = "1", FirstName = "João", LastName = "Silva" },
+                new() { Id = "2", FirstName = "Maria", LastName = "Santos" },
+                new() { Id = "3", FirstName = "Carlos", LastName = "Oliveira" }
+            };
+
+            // Initialize data categories
+            dataCategories = new List<ExportDataCategoryModel>
+            {
+                new() { Id = 1, Name = "Personal Information", Description = "Name, email, phone, address", Selected = true },
+                new() { Id = 2, Name = "Consent Records", Description = "All consent history and changes", Selected = true },
+                new() { Id = 3, Name = "Communication History", Description = "Emails, calls, messages", Selected = true },
+                new() { Id = 4, Name = "Activities & Notes", Description = "Activities, tasks, notes, interactions", Selected = false },
+                new() { Id = 5, Name = "Transactional Data", Description = "Orders, payments, contracts", Selected = false }
+            };
+
+            // Load recent exports
+            await LoadRecentExports();
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+        }
+    }
+
+    private async Task LoadRecentExports()
+    {
+        // Mock recent exports
+        recentExports = new List<RecentExportRecord>
+        {
+            new()
+            {
+                Id = "1",
+                OwnerName = "Tech Solutions Inc.",
+                Format = "JSON",
+                Status = "Completed",
+                RequestedAt = DateTime.UtcNow.AddHours(-2),
+                CompletedAt = DateTime.UtcNow.AddHours(-2).AddMinutes(-30),
+                DownloadUrl = "/api/downloads/export_1.json"
+            },
+            new()
+            {
+                Id = "2",
+                OwnerName = "Maria Santos",
+                Format = "CSV",
+                Status = "Processing",
+                RequestedAt = DateTime.UtcNow.AddMinutes(-30),
+                CompletedAt = null,
+                DownloadUrl = null
+            },
+            new()
+            {
+                Id = "3",
+                OwnerName = "João Silva",
+                Format = "JSON",
+                Status = "Failed",
+                RequestedAt = DateTime.UtcNow.AddDays(-1),
+                CompletedAt = DateTime.UtcNow.AddDays(-1).AddMinutes(-15),
+                DownloadUrl = null,
+                ErrorMessage = "Data temporarily unavailable"
+            }
+        };
+    }
+
+    private void SelectFormat(string format)
+    {
+        selectedFormat = format;
+        exportForm.Format = format;
+    }
+
+    private void ToggleCategory(ExportDataCategoryModel category)
+    {
+        category.Selected = !category.Selected;
+    }
+
+    private bool HasSelectedCategories => dataCategories.Any(c => c.Selected);
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrEmpty(exportForm.OwnerIdString))
+        {
+            // Show error message
+            return;
+        }
+
+        if (!HasSelectedCategories)
+        {
+            // Show error message
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            // Convert string ID to Guid
+            exportForm.OwnerId = Guid.Parse(exportForm.OwnerIdString);
+
+            // Get selected categories
+            exportForm.Categories = dataCategories.Where(c => c.Selected).Select(c => c.Id).ToList();
+
+            // Call API to request export
+            // var response = await Http.PostAsJsonAsync("/api/crm/consents/export", exportForm);
+
+            // Mock successful submission
+            await Task.Delay(3000); // Simulate API call
+
+            // Reload recent exports
+            await LoadRecentExports();
+
+            // Show success message
+            // Could use MudAlert or Snackbar
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+            // Show error message to user
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private void DownloadFile(RecentExportRecord export)
+    {
+        // Mock download - in real implementation, would trigger actual file download
+        Navigation.NavigateTo(export.DownloadUrl ?? "#");
+    }
+
+    private Color GetStatusChipColor(string status)
+    {
+        return status switch
+        {
+            "Completed" => Color.Success,
+            "Processing" => Color.Warning,
+            "Failed" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    private string GetFormatClass(string format)
+    {
+        return $"format-option pa-3 {(selectedFormat == format ? "selected" : "")}";
+    }
+
+    private string GetCategoryClass(bool selected)
+    {
+        return $"data-category pa-3 {(selected ? "selected" : "")}";
+    }
+
+    }

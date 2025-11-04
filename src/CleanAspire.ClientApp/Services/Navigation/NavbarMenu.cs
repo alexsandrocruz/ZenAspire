@@ -184,6 +184,64 @@ public static class NavbarMenu
         },
         new MenuItem
         {
+            Label = "LGPD & Privacy",
+            StartIcon = Icons.Material.Filled.Security,
+            EndIcon = Icons.Material.Filled.KeyboardArrowDown,
+            SubItems = new List<MenuItem>
+            {
+                new MenuItem
+                {
+                    Label = "Dashboard",
+                    Href = "/lgpd",
+                    Status = PageStatus.New,
+                    Description = "Overview of all consents and privacy settings."
+                },
+                new MenuItem
+                {
+                    Label = "Consent Management",
+                    SubItems = new List<MenuItem>
+                    {
+                        new MenuItem
+                        {
+                            Label = "All Consents",
+                            Href = "/lgpd/consents",
+                            Status = PageStatus.New,
+                            Description = "View and manage user consents."
+                        },
+                        new MenuItem
+                        {
+                            Label = "Record Consent",
+                            Href = "/lgpd/consents/new",
+                            Status = PageStatus.New,
+                            Description = "Record a new consent for data processing."
+                        }
+                    }
+                },
+                new MenuItem
+                {
+                    Label = "Data Rights",
+                    SubItems = new List<MenuItem>
+                    {
+                        new MenuItem
+                        {
+                            Label = "Export My Data",
+                            Href = "/lgpd/export",
+                            Status = PageStatus.New,
+                            Description = "Download your personal data in JSON or CSV format."
+                        },
+                        new MenuItem
+                        {
+                            Label = "Request Deletion",
+                            Href = "/lgpd/erasure",
+                            Status = PageStatus.ComingSoon,
+                            Description = "Request deletion of your personal data."
+                        }
+                    }
+                }
+            }
+        },
+        new MenuItem
+        {
             Label = "Help",
             StartIcon = Icons.Material.Filled.Help,
             EndIcon = Icons.Material.Filled.KeyboardArrowDown,

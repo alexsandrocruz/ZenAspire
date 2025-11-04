@@ -1,0 +1,340 @@
+using CleanAspire.Application.Features.Consents.DTOs;
+using CleanAspire.Application.Pipeline;
+using CleanAspire.Domain.Entities;
+using CleanAspire.Domain.Enums;
+using CleanAspire.Domain.Events;
+
+namespace CleanAspire.Application.Features.Consents.Commands;
+
+/// <summary>
+/// Command for requesting data erasure (right to be forgotten).
+/// Phase 4: LGPD Compliance - Data Erasure Workflow
+/// </summary>
+public record RequestErasureCommand : IFusionCacheRefreshRequest<DataProcessingRequestResponseDto>, IRequiresValidation
+{
+    public int OwnerType { get; init; }
+    public Guid OwnerId { get; init; }
+    public string? Reason { get; init; }
+
+    public IEnumerable<string>? Tags => new[] { "data-erasure", $"owner-{OwnerType}", $"owner-{OwnerId}" };
+}
+
+/// <summary>
+/// Handler for processing RequestErasureCommand.
+/// Implements the right to be forgotten by anonymizing or deleting personal data.
+/// </summary>
+public class RequestErasureCommandHandler : IRequestHandler<RequestErasureCommand, DataProcessingRequestResponseDto>
+{
+    private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUser;
+
+    public RequestErasureCommandHandler(
+        IApplicationDbContext context,
+        ICurrentUserService currentUser)
+    {
+        _context = context;
+        _currentUser = currentUser;
+    }
+
+    public async ValueTask<DataProcessingRequestResponseDto> Handle(RequestErasureCommand request, CancellationToken cancellationToken)
+    {
+        // Validate tenant
+        if (string.IsNullOrEmpty(_currentUser.TenantId))
+            throw new UnauthorizedAccessException("TenantId is required");
+
+        // Validate enum values
+        if (!Enum.IsDefined(typeof(OwnerType), request.OwnerType))
+            throw new ArgumentException("Invalid OwnerType value");
+
+        var requestId = Guid.NewGuid().ToString();
+        var startTime = DateTime.UtcNow;
+
+        try
+        {
+            // Raise domain event for audit trail
+            var domainEvent = new SubjectErasureRequestedEvent(
+                (OwnerType)request.OwnerType,
+                request.OwnerId,
+                _currentUser.UserId ?? "system",
+                request.Reason);
+
+            // Process erasure based on owner type
+            switch ((OwnerType)request.OwnerType)
+            {
+                case OwnerType.Client:
+                    await EraseClientDataAsync(request.OwnerId, cancellationToken);
+                    break;
+
+                case OwnerType.Contact:
+                    await EraseContactDataAsync(request.OwnerId, cancellationToken);
+                    break;
+
+                default:
+                    throw new ArgumentException($"Erasure not supported for owner type: {request.OwnerType}");
+            }
+
+            return new DataProcessingRequestResponseDto
+            {
+                RequestId = requestId,
+                OwnerType = request.OwnerType,
+                OwnerTypeName = ((OwnerType)request.OwnerType).ToString(),
+                OwnerId = request.OwnerId,
+                RequestType = "Erasure",
+                Status = "Completed",
+                RequestedAt = startTime,
+                CompletedAt = DateTime.UtcNow
+            };
+        }
+        catch (Exception ex)
+        {
+            return new DataProcessingRequestResponseDto
+            {
+                RequestId = requestId,
+                OwnerType = request.OwnerType,
+                OwnerTypeName = ((OwnerType)request.OwnerType).ToString(),
+                OwnerId = request.OwnerId,
+                RequestType = "Erasure",
+                Status = "Failed",
+                RequestedAt = startTime,
+                CompletedAt = DateTime.UtcNow,
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+
+    private async Task EraseClientDataAsync(Guid clientId, CancellationToken cancellationToken)
+    {
+        var client = await _context.Clients
+            .FirstOrDefaultAsync(c => c.Id == clientId.ToString(), cancellationToken);
+
+        if (client == null)
+            throw new InvalidOperationException("Client not found");
+
+        // Check if client has any active legal obligations or contracts
+        var hasActiveObligations = await HasActiveLegalObligationsAsync(clientId, cancellationToken);
+        if (hasActiveObligations)
+        {
+            // Instead of deletion, anonymize the data
+            await AnonymizeClientDataAsync(client, cancellationToken);
+        }
+        else
+        {
+            // Full deletion is possible
+            await DeleteClientDataAsync(client, cancellationToken);
+        }
+    }
+
+    private async Task EraseContactDataAsync(Guid contactId, CancellationToken cancellationToken)
+    {
+        var contact = await _context.Contacts
+            .Include(c => c.Client)
+            .FirstOrDefaultAsync(c => c.Id == contactId.ToString(), cancellationToken);
+
+        if (contact == null)
+            throw new InvalidOperationException("Contact not found");
+
+        // Check if contact has any active legal obligations
+        var hasActiveObligations = await HasActiveLegalObligationsAsync(contactId, cancellationToken);
+        if (hasActiveObligations)
+        {
+            // Instead of deletion, anonymize the data
+            await AnonymizeContactDataAsync(contact, cancellationToken);
+        }
+        else
+        {
+            // Full deletion is possible
+            await DeleteContactDataAsync(contact, cancellationToken);
+        }
+    }
+
+    private async Task<bool> HasActiveLegalObligationsAsync(Guid ownerId, CancellationToken cancellationToken)
+    {
+        // Check for active contracts, ongoing legal proceedings, or other obligations
+        // This is a simplified check - in a real implementation, you'd check:
+        // - Active contracts or agreements
+        // - Ongoing legal proceedings
+        // - Regulatory requirements for data retention
+        // - Outstanding financial obligations
+
+        // For now, we'll check if there are any recent activities or interactions
+        var recentActivities = await _context.Activities
+            .AnyAsync(a => a.RegardingId == ownerId &&
+                          a.Created > DateTime.UtcNow.AddDays(-365), // Last year
+                          cancellationToken);
+
+        var recentInteractions = await _context.Interactions
+            .AnyAsync(i => i.OwnerId == ownerId &&
+                          i.Created > DateTime.UtcNow.AddDays(-365), // Last year
+                          cancellationToken);
+
+        return recentActivities || recentInteractions;
+    }
+
+    private async Task AnonymizeClientDataAsync(Client client, CancellationToken cancellationToken)
+    {
+        // Anonymize personal data while preserving business records
+        client.Name = $"ANONYMIZED_CLIENT_{client.Id.Substring(0, 8)}";
+        client.LegalName = null;
+        client.TradeName = null;
+        client.TaxId = null;
+        client.Email = null;
+        client.Phone = null;
+        client.Website = null;
+        client.Address = null;
+        client.City = null;
+        client.State = null;
+        client.PostalCode = null;
+        client.Country = null;
+        client.Notes = "[ANONYMIZED - Data erasure request processed]";
+        client.LastModified = DateTime.UtcNow;
+        client.LastModifiedBy = "DATA_ERASURE_SYSTEM";
+
+        // Anonymize related contacts
+        var contacts = await _context.Contacts
+            .Where(c => c.ClientId == client.Id)
+            .ToListAsync(cancellationToken);
+
+        foreach (var contact in contacts)
+        {
+            await AnonymizeContactDataAsync(contact, cancellationToken);
+        }
+
+        // Mark consents as withdrawn
+        var consents = await _context.Consents
+            .Where(c => c.OwnerType == OwnerType.Client && c.OwnerId == Guid.Parse(client.Id))
+            .ToListAsync(cancellationToken);
+
+        foreach (var consent in consents)
+        {
+            consent.OptIn = false;
+            consent.Notes = "[CONSENT WITHDRAWN - Data erasure request processed]";
+            consent.LastModified = DateTime.UtcNow;
+            consent.LastModifiedBy = "DATA_ERASURE_SYSTEM";
+        }
+
+        // Add domain event for audit
+        client.AddDomainEvent(new ClientUpdatedEvent(client));
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task DeleteClientDataAsync(Client client, CancellationToken cancellationToken)
+    {
+        // Soft delete the client and all related data
+        // Note: In a real implementation, you might want to create a tombstone record
+        // for audit purposes before deletion
+
+        // Delete related entities first
+        var relatedEntityIds = new List<string> { client.Id };
+
+        // Get related contacts
+        var contacts = await _context.Contacts
+            .Where(c => c.ClientId == client.Id)
+            .ToListAsync(cancellationToken);
+
+        relatedEntityIds.AddRange(contacts.Select(c => c.Id));
+
+        // Delete related entities in order
+        await DeleteRelatedEntitiesAsync(relatedEntityIds, cancellationToken);
+
+        // Delete the client
+        _context.Clients.Remove(client);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task AnonymizeContactDataAsync(Contact contact, CancellationToken cancellationToken)
+    {
+        // Anonymize personal data
+        contact.FirstName = "ANONYMIZED";
+        contact.LastName = $"CONTACT_{contact.Id.Substring(0, 8)}";
+        contact.Email = null;
+        contact.Phone = null;
+        contact.Mobile = null;
+        contact.JobTitle = null;
+        contact.Department = null;
+        contact.Notes = "[ANONYMIZED - Data erasure request processed]";
+        contact.LastModified = DateTime.UtcNow;
+        contact.LastModifiedBy = "DATA_ERASURE_SYSTEM";
+
+        // Mark consents as withdrawn
+        var consents = await _context.Consents
+            .Where(c => c.OwnerType == OwnerType.Contact && c.OwnerId == Guid.Parse(contact.Id))
+            .ToListAsync(cancellationToken);
+
+        foreach (var consent in consents)
+        {
+            consent.OptIn = false;
+            consent.Notes = "[CONSENT WITHDRAWN - Data erasure request processed]";
+            consent.LastModified = DateTime.UtcNow;
+            consent.LastModifiedBy = "DATA_ERASURE_SYSTEM";
+        }
+
+        // Add domain event for audit
+        contact.AddDomainEvent(new ContactUpdatedEvent(contact));
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task DeleteContactDataAsync(Contact contact, CancellationToken cancellationToken)
+    {
+        // Delete related entities first
+        await DeleteRelatedEntitiesAsync(new List<string> { contact.Id }, cancellationToken);
+
+        // Delete the contact
+        _context.Contacts.Remove(contact);
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task DeleteRelatedEntitiesAsync(List<string> ownerIds, CancellationToken cancellationToken)
+    {
+        // Delete related entities for all provided owner IDs
+        var ownerGuids = ownerIds.Select(id => Guid.Parse(id)).ToList();
+
+        // Delete notes
+        var notes = await _context.Notes
+            .Where(n => ownerGuids.Contains(n.OwnerId))
+            .ToListAsync(cancellationToken);
+        _context.Notes.RemoveRange(notes);
+
+        // Delete interactions
+        var interactions = await _context.Interactions
+            .Where(i => ownerGuids.Contains(i.OwnerId))
+            .ToListAsync(cancellationToken);
+        _context.Interactions.RemoveRange(interactions);
+
+        // Delete activities (activities use RegardingId, not OwnerId)
+        var activities = await _context.Activities
+            .Where(a => a.RegardingId.HasValue && ownerGuids.Contains(a.RegardingId.Value))
+            .ToListAsync(cancellationToken);
+        _context.Activities.RemoveRange(activities);
+
+        // Delete attachments (attachments are linked to notes, not owners directly)
+        // We'll delete attachments when deleting their parent notes
+
+        // Delete tag links
+        var tagLinks = await _context.TagLinks
+            .Where(tl => ownerGuids.Contains(tl.OwnerId))
+            .ToListAsync(cancellationToken);
+        _context.TagLinks.RemoveRange(tagLinks);
+
+        // Delete addresses
+        var addresses = await _context.Addresses
+            .Where(a => ownerGuids.Contains(a.OwnerId))
+            .ToListAsync(cancellationToken);
+        _context.Addresses.RemoveRange(addresses);
+
+        // Delete channel identities
+        var channelIdentities = await _context.ChannelIdentities
+            .Where(ci => ownerGuids.Contains(ci.OwnerId))
+            .ToListAsync(cancellationToken);
+        _context.ChannelIdentities.RemoveRange(channelIdentities);
+
+        // Delete consents
+        var consents = await _context.Consents
+            .Where(c => ownerGuids.Contains(c.OwnerId))
+            .ToListAsync(cancellationToken);
+        _context.Consents.RemoveRange(consents);
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+}

@@ -1,0 +1,538 @@
+@page "/lgpd/erasure"
+@layout ApplicationLayout
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+<PageTitle>Data Erasure Request</PageTitle>
+
+<style>
+    .erasure-card {
+        transition: all 0.3s ease;
+    }
+    .erasure-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+    .warning-box {
+        border-left: 4px solid #f44336;
+        background-color: #fff3f3;
+    }
+    .info-box {
+        border-left: 4px solid #2196f3;
+        background-color: #f3f8ff;
+    }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-4">
+    <MudStack Spacing="4">
+        <!-- Header with Warning -->
+        <MudPaper Elevation="2" Class="pa-6">
+            <MudStack Spacing="3">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.h4">
+                        <MudIcon Icon="@Icons.Material.Filled.Warning" Class="mr-2" Color="Color.Error" />
+                        Request Data Deletion
+                    </MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">
+                        Exercise your right to be forgotten under LGPD regulations.
+                    </MudText>
+                </MudStack>
+
+                <MudAlert Severity="Severity.Warning" Class="mb-2">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.body1">
+                            <strong>⚠️ Important: This action cannot be undone</strong>
+                        </MudText>
+                        <MudText Typo="Typo.body2">
+                            Data deletion requests result in permanent removal or anonymization of personal data.
+                            Please consider exporting your data before proceeding.
+                        </MudText>
+                    </MudStack>
+                </MudAlert>
+
+                <MudAlert Severity="Severity.Info">
+                    <MudStack Spacing="1">
+                        <MudText Typo="Typo.body1">
+                            <strong>LGPD Right to Erasure:</strong>
+                        </MudText>
+                        <MudText Typo="Typo.body2">
+                            You have the right to request the deletion of your personal data when it's no longer
+                            necessary for the purposes it was collected, or when you withdraw consent.
+                        </MudText>
+                    </MudStack>
+                </MudAlert>
+            </MudStack>
+        </MudPaper>
+
+        <!-- Data Subject Selection -->
+        <MudPaper Elevation="1" Class="pa-6 erasure-card">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.h6">1. Select Data Subject</MudText>
+
+                <MudSelect T="int" Label="Owner Type" @bind-Value="erasureForm.OwnerType" Required="true">
+                    <MudSelectItem T="int" Value="1">Client</MudSelectItem>
+                    <MudSelectItem T="int" Value="2">Contact</MudSelectItem>
+                </MudSelect>
+
+                @if (erasureForm.OwnerType == 1)
+                {
+                    <MudSelect T="string" Label="Select Client" @bind-Value="erasureForm.OwnerIdString" Required="true">
+                        @if (clients.Any())
+                        {
+                            @foreach (var client in clients)
+                            {
+                                <MudSelectItem T="string" Value="@client.Id">@client.Name</MudSelectItem>
+                            }
+                        }
+                        else
+                        {
+                            <MudSelectItem T="string" Value="@EMPTY" Disabled="true">No clients available</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+                else if (erasureForm.OwnerType == 2)
+                {
+                    <MudSelect T="string" Label="Select Contact" @bind-Value="erasureForm.OwnerIdString" Required="true">
+                        @if (contacts.Any())
+                        {
+                            @foreach (var contact in contacts)
+                            {
+                                <MudSelectItem T="string" Value="@contact.Id">@contact.Name</MudSelectItem>
+                            }
+                        }
+                        else
+                        {
+                            <MudSelectItem T="string" Value="@EMPTY" Disabled="true">No contacts available</MudSelectItem>
+                        }
+                    </MudSelect>
+                }
+            </MudStack>
+        </MudPaper>
+
+        <!-- Data Review -->
+        <MudPaper Elevation="1" Class="pa-6 erasure-card">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.h6">2. Review Data to Be Deleted</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                    The following personal data will be permanently deleted or anonymized:
+                </MudText>
+
+                @if (selectedOwnerData != null)
+                {
+                    <MudGrid Container="true" Spacing="2">
+                        <MudItem xs="12" md="6">
+                            <MudPaper Elevation="0" Class="pa-3 info-box">
+                                <MudStack Spacing="2">
+                                    <MudText Typo="Typo.subtitle1">Personal Information</MudText>
+                                    <MudText Typo="Typo.body2">Name, email, phone, address, tax ID</MudText>
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudPaper Elevation="0" Class="pa-3 info-box">
+                                <MudStack Spacing="2">
+                                    <MudText Typo="Typo.subtitle1">Communication History</MudText>
+                                    <MudText Typo="Typo.body2">Emails, calls, messages, interactions</MudText>
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudPaper Elevation="0" Class="pa-3 info-box">
+                                <MudStack Spacing="2">
+                                    <MudText Typo="Typo.subtitle1">Activities & Notes</MudText>
+                                    <MudText Typo="Typo.body2">Tasks, meetings, notes, reminders</MudText>
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+                        <MudItem xs="12" md="6">
+                            <MudPaper Elevation="0" Class="pa-3 info-box">
+                                <MudStack Spacing="2">
+                                    <MudText Typo="Typo.subtitle1">Consent Records</MudText>
+                                    <MudText Typo="Typo.body2">All consent history and changes</MudText>
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">
+                        Select a data subject above to review what data will be deleted.
+                    </MudAlert>
+                }
+            </MudStack>
+        </MudPaper>
+
+        <!-- Erasure Reason -->
+        <MudPaper Elevation="1" Class="pa-6 erasure-card">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.h6">3. Reason for Deletion Request</MudText>
+
+                <MudRadioGroup @bind-Value="@erasureReason">
+                    <MudRadio T="string" Value="@WITHDRAWAL" Color="Color.Error">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.subtitle1">Consent Withdrawal</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                I withdraw my consent for data processing
+                            </MudText>
+                        </MudStack>
+                    </MudRadio>
+
+                    <MudRadio T="string" Value="@PURPOSE" Color="Color.Error">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.subtitle1">No Longer Necessary</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Data is no longer needed for its original purpose
+                            </MudText>
+                        </MudStack>
+                    </MudRadio>
+
+                    <MudRadio T="string" Value="@OBJECTION" Color="Color.Error">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.subtitle1">Objection to Processing</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                I object to the processing of my personal data
+                            </MudText>
+                        </MudStack>
+                    </MudRadio>
+
+                    <MudRadio T="string" Value="@OTHER" Color="Color.Error">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.subtitle1">Other Reason</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Another valid reason for data deletion
+                            </MudText>
+                        </MudStack>
+                    </MudRadio>
+                </MudRadioGroup>
+
+                <MudTextField T="string"
+                              Label="Additional Details (Optional)"
+                              @bind-Value="erasureForm.Reason"
+                              Multiline="true"
+                              Rows="3"
+                              HelperText="Please provide any additional details about your deletion request" />
+            </MudStack>
+        </MudPaper>
+
+        <!-- Confirmation -->
+        <MudPaper Elevation="1" Class="pa-6 erasure-card">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.h6">4. Final Confirmation</MudText>
+
+                <MudAlert Severity="Severity.Error" Class="warning-box">
+                    <MudStack Spacing="2">
+                        <MudStack Direction="Direction.Horizontal" Spacing="1" AlignItems="AlignItems.Center">
+                            <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" />
+                            <MudText Typo="Typo.subtitle1" Color="Color.Error">
+                                This action cannot be undone
+                            </MudText>
+                        </MudStack>
+                        <MudText Typo="Typo.body2">
+                            Once submitted, your deletion request will be processed according to LGPD requirements.
+                            Some data may be retained if required by law or for legitimate business interests.
+                        </MudText>
+                    </MudStack>
+                </MudAlert>
+
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.body1">By submitting this request, you confirm that:</MudText>
+                    <MudList T="string" Dense="true">
+                        <MudListItem T="string">
+                            <MudText Typo="Typo.body2">
+                                ✓ You understand this action cannot be undone
+                            </MudText>
+                        </MudListItem>
+                        <MudListItem T="string">
+                            <MudText Typo="Typo.body2">
+                                ✓ You have the right to request this deletion
+                            </MudText>
+                        </MudListItem>
+                        <MudListItem T="string">
+                            <MudText Typo="Typo.body2">
+                                ✓ Some data may be retained for legal reasons
+                            </MudText>
+                        </MudListItem>
+                    </MudList>
+                </MudStack>
+
+                <MudStack Spacing="2" Class="mt-4">
+                    <MudButton Variant="Variant.Filled"
+                              Color="Color.Error"
+                              StartIcon="@Icons.Material.Filled.DeleteForever"
+                              Size="Size.Large"
+                              Disabled="@(isSubmitting || !CanSubmit)"
+                              OnClick="@HandleSubmit"
+                              FullWidth="true">
+                        @(isSubmitting ? "Processing..." : "Request Data Deletion")
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Outlined"
+                              Color="Color.Secondary"
+                              StartIcon="@Icons.Material.Filled.Cancel"
+                              OnClick="@(() => Navigation.NavigateTo("/lgpd"))"
+                              Disabled="@isSubmitting">
+                        Cancel
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Text"
+                              OnClick="@(() => Navigation.NavigateTo("/lgpd/export"))"
+                              Disabled="@isSubmitting">
+                        <MudIcon Icon="@Icons.Material.Filled.Download" Class="mr-1" />
+                        Export Data First
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        <!-- Recent Requests -->
+        <MudPaper Elevation="1" Class="pa-6">
+            <MudStack Spacing="3">
+                <MudText Typo="Typo.h6">Recent Deletion Requests</MudText>
+
+                @if (recentErasureRequests.Any())
+                {
+                    <MudList T="ErasureRequestDto" Dense="true">
+                        @foreach (var request in recentErasureRequests)
+                        {
+                            <MudListItem T="ErasureRequestDto" Value="@request">
+                                <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="w-100">
+                                    <MudStack Spacing="1">
+                                        <MudStack Direction="Direction.Horizontal" Spacing="1" AlignItems="AlignItems.Center">
+                                            <MudText Typo="Typo.body1">@request.OwnerName</MudText>
+                                            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Text="@request.OwnerTypeName" />
+                                        </MudStack>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            Requested: @request.RequestedAt.ToString("MMM dd, yyyy HH:mm")
+                                        </MudText>
+                                    </MudStack>
+                                    <MudStack Direction="Direction.Horizontal" Spacing="1" AlignItems="AlignItems.Center">
+                                        <MudChip T="string" Size="Size.Small"
+                                                Color="@GetStatusChipColor(request.Status)"
+                                                Variant="Variant.Filled"
+                                                Text="@request.Status" />
+                                        @if (request.CompletedAt.HasValue)
+                                        {
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                Completed: @request.CompletedAt.Value.ToString("MMM dd, yyyy HH:mm")
+                                            </MudText>
+                                        }
+                                    </MudStack>
+                                </MudStack>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+                else
+                {
+                    <MudAlert Severity="Severity.Info">
+                        <MudText>No deletion requests found. Your recent requests will appear here.</MudText>
+                    </MudAlert>
+                }
+            </MudStack>
+        </MudPaper>
+    </MudStack>
+</MudContainer>
+
+@code {
+    private ErasureForm erasureForm = new();
+    private bool isSubmitting = false;
+    private string erasureReason = "withdrawal";
+
+    // Constants for erasure reasons
+    private const string WITHDRAWAL = "withdrawal";
+    private const string PURPOSE = "purpose";
+    private const string OBJECTION = "objection";
+    private const string OTHER = "other";
+    private const string EMPTY = "empty";
+
+    // Mock data - replace with actual API calls
+    private List<OwnerDataDto> clients = new();
+    private List<OwnerDataDto> contacts = new();
+    private OwnerDataDto? selectedOwnerData;
+    private List<ErasureRequestDto> recentErasureRequests = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        try
+        {
+            // Load owners
+            clients = new List<OwnerDataDto>
+            {
+                new() { Id = "1", Name = "Tech Solutions Inc." },
+                new() { Id = "2", Name = "Global Services Ltd." },
+                new() { Id = "3", Name = "Digital Innovations" }
+            };
+
+            contacts = new List<OwnerDataDto>
+            {
+                new() { Id = "1", Name = "João Silva" },
+                new() { Id = "2", Name = "Maria Santos" },
+                new() { Id = "3", Name = "Carlos Oliveira" }
+            };
+
+            // Load recent erasure requests
+            await LoadRecentRequests();
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+        }
+    }
+
+    private async Task LoadRecentRequests()
+    {
+        // Mock recent erasure requests
+        recentErasureRequests = new List<ErasureRequestDto>
+        {
+            new()
+            {
+                Id = "1",
+                OwnerName = "Old Client Corp",
+                OwnerTypeName = "Client",
+                Status = "Completed",
+                RequestedAt = DateTime.UtcNow.AddDays(-5),
+                CompletedAt = DateTime.UtcNow.AddDays(-5).AddHours(-2)
+            },
+            new()
+            {
+                Id = "2",
+                OwnerName = "Ana Costa",
+                OwnerTypeName = "Contact",
+                Status = "Processing",
+                RequestedAt = DateTime.UtcNow.AddHours(-3),
+                CompletedAt = null
+            },
+            new()
+            {
+                Id = "3",
+                OwnerName = "Pedro Martins",
+                OwnerTypeName = "Contact",
+                Status = "Failed",
+                RequestedAt = DateTime.UtcNow.AddDays(-2),
+                CompletedAt = DateTime.UtcNow.AddDays(-2).AddHours(-1),
+                ErrorMessage = "Legal obligation prevents deletion"
+            }
+        };
+    }
+
+    private bool CanSubmit => !string.IsNullOrEmpty(erasureForm.OwnerIdString) && !string.IsNullOrEmpty(erasureReason);
+
+    private async Task HandleSubmit()
+    {
+        if (!CanSubmit)
+        {
+            // Show error message
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            // Convert string ID to Guid
+            erasureForm.OwnerId = Guid.Parse(erasureForm.OwnerIdString);
+
+            // Build reason text
+            erasureForm.Reason = BuildReasonText();
+
+            // Call API to request erasure
+            // var response = await Http.PostAsJsonAsync("/api/crm/consents/erasure", erasureForm);
+
+            // Mock successful submission
+            await Task.Delay(3000); // Simulate API call
+
+            // Reload recent requests
+            await LoadRecentRequests();
+
+            // Navigate back to dashboard
+            Navigation.NavigateTo("/lgpd");
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+            // Show error message to user
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private string BuildReasonText()
+    {
+        var baseReason = erasureReason switch
+        {
+            WITHDRAWAL => "Consent withdrawal - User withdraws consent for data processing",
+            PURPOSE => "No longer necessary - Data is no longer needed for original purpose",
+            OBJECTION => "Objection to processing - User objects to personal data processing",
+            OTHER => "Other reason for data deletion",
+            _ => "Data deletion request"
+        };
+
+        if (!string.IsNullOrEmpty(erasureForm.Reason))
+        {
+            baseReason += $": {erasureForm.Reason}";
+        }
+
+        return baseReason;
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Update selected owner data when owner changes
+        if (!string.IsNullOrEmpty(erasureForm.OwnerIdString) && erasureForm.OwnerType > 0)
+        {
+            selectedOwnerData = erasureForm.OwnerType == 1
+                ? clients.FirstOrDefault(c => c.Id == erasureForm.OwnerIdString)
+                : contacts.FirstOrDefault(c => c.Id == erasureForm.OwnerIdString);
+        }
+        else
+        {
+            selectedOwnerData = null;
+        }
+    }
+
+    private Color GetStatusChipColor(string status)
+    {
+        return status switch
+        {
+            "Completed" => Color.Success,
+            "Processing" => Color.Warning,
+            "Failed" => Color.Error,
+            _ => Color.Default
+        };
+    }
+
+    // Form model
+    public class ErasureForm
+    {
+        public int OwnerType { get; set; }
+        public string OwnerIdString { get; set; } = string.Empty;
+        public Guid OwnerId { get; set; }
+        public string? Reason { get; set; }
+    }
+
+    // DTOs
+    public class OwnerDataDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+    }
+
+    public class ErasureRequestDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string OwnerName { get; set; } = string.Empty;
+        public string OwnerTypeName { get; set; } = string.Empty;
+        public string Status { get; set; } = string.Empty;
+        public DateTime RequestedAt { get; set; }
+        public DateTime? CompletedAt { get; set; }
+        public string? ErrorMessage { get; set; }
+    }
+}

@@ -101,6 +101,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<Interaction> Interactions { get; set; }
 
     /// <summary>
+    /// Gets or sets the Consents DbSet.
+    /// Phase 4: LGPD Compliance - Consent & Data Privacy
+    /// </summary>
+    public DbSet<Consent> Consents { get; set; }
+
+    /// <summary>
     /// Configures the schema needed for the identity framework.
     /// </summary>
     /// <param name="builder">The builder being used to construct the model for this context.</param>
@@ -143,6 +149,10 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
                 e.TenantId == _currentUserService.TenantId);
 
             builder.Entity<Interaction>().HasQueryFilter(e =>
+                e.TenantId == _currentUserService.TenantId);
+
+            // ✅ Phase 4: LGPD Compliance - Consent & Data Privacy
+            builder.Entity<Consent>().HasQueryFilter(e =>
                 e.TenantId == _currentUserService.TenantId);
         }
     }

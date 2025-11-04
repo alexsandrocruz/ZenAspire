@@ -168,6 +168,7 @@ public static class DependencyInjection
         });
         services.AddScoped<AuthenticationStateProvider, CookieAuthenticationStateProvider>();
         services.AddScoped(sp => (ISignInManagement)sp.GetRequiredService<AuthenticationStateProvider>());
+        services.AddScoped<ReminderServiceProxy>();
 
         // Localization
         services.AddLocalization(options => options.ResourcesPath = "Resources");

@@ -7,6 +7,11 @@ using CleanAspire.ClientApp;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Options;
+using CleanAspire.Application;
+using CleanAspire.Infrastructure;
+using CleanAspire.Infrastructure.Persistence;
+using CleanAspire.Domain.Identities;
+using Microsoft.AspNetCore.Identity;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -21,6 +26,29 @@ builder.Services.AddRazorComponents()
 builder.Services.AddCoreServices(builder.Configuration);
 builder.Services.AddHttpClients(builder.Configuration);
 builder.Services.AddAuthenticationAndLocalization(builder.Configuration);
+
+// Add Infrastructure and Application services (including reminder services)
+builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddApplication();
+
+// Add ASP.NET Core Identity with Authentication
+builder.Services.AddIdentityCore<ApplicationUser>(options =>
+{
+    options.SignIn.RequireConfirmedEmail = true;
+})
+    .AddEntityFrameworkStores<ApplicationDbContext>()
+    .AddApiEndpoints();
+
+// Add Authentication
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultScheme = Microsoft.AspNetCore.Identity.IdentityConstants.ApplicationScheme;
+    options.DefaultSignInScheme = Microsoft.AspNetCore.Identity.IdentityConstants.ExternalScheme;
+})
+    .AddIdentityCookies();
+
+// Add Authorization
+builder.Services.AddAuthorizationBuilder();
 
 // Add localization support
 builder.Services.AddLocalization(options => options.ResourcesPath = "Resources");
@@ -66,6 +94,10 @@ else
 }
 
 app.UseHttpsRedirection();
+
+// Add authentication middleware
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Add localization middleware
 var localizationOptions = app.Services.GetRequiredService<IOptions<RequestLocalizationOptions>>();

@@ -75,6 +75,11 @@ public class Activity : BaseAuditableEntity
     public DateTime? ReminderAt { get; set; }
 
     /// <summary>
+    /// Whether the reminder has been sent
+    /// </summary>
+    public bool ReminderSent { get; set; }
+
+    /// <summary>
     /// When the activity was actually completed (null if not completed)
     /// </summary>
     public DateTime? CompletedAt { get; set; }

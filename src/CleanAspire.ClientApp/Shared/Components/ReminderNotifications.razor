@@ -1,0 +1,152 @@
+@using CleanAspire.ClientApp.Services.Activities
+@using CleanAspire.ClientApp.Services.Activities.DTOs
+@inject ReminderServiceProxy ReminderServiceProxy
+@inject ISnackbar Snackbar
+
+@if (_pendingReminders?.Any() == true)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            <MudStack Spacing="2" Direction="Direction.Vertical">
+                <MudText Typo="Typo.h6">
+                    <MudIcon Icon="@Icons.Material.Outlined.Notifications" Class="mr-2" />
+                    @L["Pending Reminders"]
+                </MudText>
+                <MudText Typo="Typo.body2">
+                    @L["You have {0} pending reminder(s)", _pendingReminders.Count]
+                </MudText>
+            </MudStack>
+        </MudAlert>
+
+        <MudPaper Class="pa-4 mb-4">
+            <MudStack Spacing="2" Direction="Direction.Vertical">
+                @foreach (var reminder in _pendingReminders.Take(5))
+                {
+                    <MudCard Elevation="1">
+                        <MudCardContent>
+                            <MudGrid>
+                                <MudItem xs="12" md="8">
+                                    <MudStack Spacing="1">
+                                        <MudText Typo="Typo.subtitle1">@reminder.Subject</MudText>
+                                        @if (!string.IsNullOrEmpty(reminder.Description))
+                                        {
+                                            <MudText Typo="Typo.body2">@reminder.Description</MudText>
+                                        }
+                                        <MudText Typo="Typo.caption" Color="Color.Primary">
+                                            <MudIcon Icon="@Icons.Material.Outlined.Schedule" Size="Size.Small" />
+                                            @L["Reminder: {0}", reminder.ReminderAt.ToString("g")]
+                                        </MudText>
+                                        @if (!string.IsNullOrEmpty(reminder.Location))
+                                        {
+                                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                <MudIcon Icon="@Icons.Material.Outlined.LocationOn" Size="Size.Small" />
+                                                @reminder.Location
+                                            </MudText>
+                                        }
+                                    </MudStack>
+                                </MudItem>
+                                <MudItem xs="12" md="4">
+                                    <MudStack AlignItems="AlignItems.End" Spacing="1">
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            @reminder.TimeUntilReminder
+                                        </MudText>
+                                        <MudButton Size="Size.Small" Variant="Variant.Outlined"
+                                                   OnClick="() => DismissReminder(reminder.Id)"
+                                                   Loading="@_dismissingIds.Contains(reminder.Id)">
+                                            <MudIcon Icon="@Icons.Material.Outlined.Done" />
+                                            @L["Dismiss"]
+                                        </MudButton>
+                                        <MudButton Size="Size.Small" Variant="Variant.Text"
+                                                   OnClick="() => ViewActivity(reminder.Id)">
+                                            <MudIcon Icon="@Icons.Material.Outlined.Visibility" />
+                                            @L["View"]
+                                        </MudButton>
+                                    </MudStack>
+                                </MudItem>
+                            </MudGrid>
+                        </MudCardContent>
+                    </MudCard>
+                }
+
+                @if (_pendingReminders.Count > 5)
+                {
+                    <MudText Typo="Typo.body2" Align="Align.Center" Class="mt-2">
+                        @L["And {0} more reminders...", _pendingReminders.Count - 5]
+                    </MudText>
+                }
+            </MudStack>
+        </MudPaper>
+    </MudContainer>
+}
+
+@code {
+    private List<ActivityReminderDto>? _pendingReminders = new();
+    private HashSet<string> _dismissingIds = new();
+    private Timer? _refreshTimer;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadPendingReminders();
+
+        // Refresh reminders every minute
+        _refreshTimer = new Timer(async _ => await LoadPendingReminders(), null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+    }
+
+    private async Task LoadPendingReminders()
+    {
+        try
+        {
+            _pendingReminders = await ReminderServiceProxy.GetPendingRemindersAsync();
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading pending reminders: {ex.Message}");
+        }
+    }
+
+    private async Task DismissReminder(string activityId)
+    {
+        _dismissingIds.Add(activityId);
+        StateHasChanged();
+
+        try
+        {
+            var success = await ReminderServiceProxy.MarkReminderAsSentAsync(activityId);
+
+            if (success)
+            {
+                // Remove from local list
+                _pendingReminders = _pendingReminders?.Where(r => r.Id != activityId).ToList();
+                Snackbar.Add(@L["Reminder dismissed"], Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(@L["Failed to dismiss reminder"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error dismissing reminder: {ex.Message}");
+            Snackbar.Add(@L["An error occurred while dismissing the reminder"], Severity.Error);
+        }
+        finally
+        {
+            _dismissingIds.Remove(activityId);
+            StateHasChanged();
+        }
+    }
+
+    private void ViewActivity(string activityId)
+    {
+        // Navigate to activity details
+        // This would need to be implemented based on your navigation structure
+        // For now, just log it
+        Console.WriteLine($"Navigate to activity {activityId}");
+    }
+
+    public void Dispose()
+    {
+        _refreshTimer?.Dispose();
+    }
+}

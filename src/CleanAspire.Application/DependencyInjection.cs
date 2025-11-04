@@ -4,6 +4,7 @@
 
 using System.Reflection;
 using CleanAspire.Application.Pipeline;
+using CleanAspire.Application.Features.Activities.Services;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CleanAspire.Application;
@@ -21,7 +22,10 @@ public static class DependencyInjection
             options.ServiceLifetime = ServiceLifetime.Scoped;
         });
 
-       
+        // Activity Reminder Services
+        services.AddScoped<IReminderService, ReminderService>();
+
+ 
         return services;
     }
 }

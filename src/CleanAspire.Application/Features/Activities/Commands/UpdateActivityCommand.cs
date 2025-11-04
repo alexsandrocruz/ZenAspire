@@ -70,6 +70,11 @@ public record UpdateActivityCommand : IFusionCacheRefreshRequest<Unit>, IRequire
     public DateTime? ReminderAt { get; init; }
 
     /// <summary>
+    /// Whether the reminder has been sent
+    /// </summary>
+    public bool? ReminderSent { get; init; }
+
+    /// <summary>
     /// Priority level of the activity
     /// </summary>
     public ActivityPriority Priority { get; init; }
@@ -132,6 +137,11 @@ public class UpdateActivityCommandHandler : IRequestHandler<UpdateActivityComman
         activity.RegardingId = request.RegardingId;
         activity.AssignedToUserId = request.AssignedToUserId;
         activity.ReminderAt = request.ReminderAt;
+
+        if (request.ReminderSent.HasValue)
+        {
+            activity.ReminderSent = request.ReminderSent.Value;
+        }
         activity.Priority = request.Priority;
         activity.Location = request.Location;
         activity.DurationMinutes = request.DurationMinutes;

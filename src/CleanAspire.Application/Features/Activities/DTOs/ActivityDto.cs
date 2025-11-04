@@ -83,6 +83,11 @@ public class ActivityDto
     public DateTime? ReminderAt { get; set; }
 
     /// <summary>
+    /// Whether the reminder has been sent
+    /// </summary>
+    public bool ReminderSent { get; set; }
+
+    /// <summary>
     /// When the activity was actually completed
     /// </summary>
     public DateTime? CompletedAt { get; set; }

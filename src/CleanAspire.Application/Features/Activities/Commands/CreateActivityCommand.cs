@@ -66,6 +66,11 @@ public record CreateActivityCommand : IFusionCacheRefreshRequest<ActivityDto>, I
     public DateTime? ReminderAt { get; init; }
 
     /// <summary>
+    /// Whether the reminder has been sent (defaults to false)
+    /// </summary>
+    public bool ReminderSent { get; init; } = false;
+
+    /// <summary>
     /// Priority level of the activity (defaults to Normal)
     /// </summary>
     public ActivityPriority Priority { get; init; } = ActivityPriority.Normal;
@@ -122,6 +127,7 @@ public class CreateActivityCommandHandler : IRequestHandler<CreateActivityComman
             RegardingId = request.RegardingId,
             AssignedToUserId = request.AssignedToUserId ?? _currentUser.UserId,
             ReminderAt = request.ReminderAt,
+            ReminderSent = request.ReminderSent,
             Priority = request.Priority,
             Location = request.Location,
             DurationMinutes = request.DurationMinutes
@@ -146,6 +152,7 @@ public class CreateActivityCommandHandler : IRequestHandler<CreateActivityComman
             RegardingId = activity.RegardingId,
             AssignedToUserId = activity.AssignedToUserId,
             ReminderAt = activity.ReminderAt,
+            ReminderSent = activity.ReminderSent,
             CompletedAt = activity.CompletedAt,
             Priority = (int)activity.Priority,
             PriorityName = activity.Priority.ToString(),

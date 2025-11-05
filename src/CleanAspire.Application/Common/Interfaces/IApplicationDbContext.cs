@@ -86,6 +86,18 @@ public interface IApplicationDbContext
     DbSet<Consent> Consents { get; set; }
 
     /// <summary>
+    /// Gets or sets the Segments DbSet.
+    /// Phase 5: Segmentation Engine
+    /// </summary>
+    DbSet<Segment> Segments { get; set; }
+
+    /// <summary>
+    /// Gets or sets the SegmentMemberships DbSet.
+    /// Phase 5: Segmentation Engine - Materialized view of segment members
+    /// </summary>
+    DbSet<SegmentMembership> SegmentMemberships { get; set; }
+
+    /// <summary>
     /// Saves all changes made in this context to the database.
     /// </summary>
     /// <param name="cancellationToken">A CancellationToken to observe while waiting for the task to complete.</param>

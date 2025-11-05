@@ -107,6 +107,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
     public DbSet<Consent> Consents { get; set; }
 
     /// <summary>
+    /// Gets or sets the Segments DbSet.
+    /// Phase 5: Segmentation Engine
+    /// </summary>
+    public DbSet<Segment> Segments { get; set; }
+
+    /// <summary>
+    /// Gets or sets the SegmentMemberships DbSet.
+    /// Phase 5: Segmentation Engine - Materialized view of segment members
+    /// </summary>
+    public DbSet<SegmentMembership> SegmentMemberships { get; set; }
+
+    /// <summary>
     /// Configures the schema needed for the identity framework.
     /// </summary>
     /// <param name="builder">The builder being used to construct the model for this context.</param>
@@ -153,6 +165,13 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>, IApplica
 
             // ✅ Phase 4: LGPD Compliance - Consent & Data Privacy
             builder.Entity<Consent>().HasQueryFilter(e =>
+                e.TenantId == _currentUserService.TenantId);
+
+            // ✅ Phase 5: Segmentation Engine
+            builder.Entity<Segment>().HasQueryFilter(e =>
+                e.TenantId == _currentUserService.TenantId);
+
+            builder.Entity<SegmentMembership>().HasQueryFilter(e =>
                 e.TenantId == _currentUserService.TenantId);
         }
     }

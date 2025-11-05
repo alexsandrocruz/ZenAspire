@@ -23,6 +23,12 @@
     <PackageReference Include="Aspire.Hosting.AppHost" Version="9.4.2" />
     <PackageReference Include="KubernetesClient" Version="17.0.14" />
     <PackageReference Include="Microsoft.Build.Tasks.Core" Version="17.14.28" />
+    <PackageReference Include="Elsa.Workflows" Version="3.2.0-rc2" />
+    <PackageReference Include="Elsa.Workflows.Runtime" Version="3.2.0-rc2" />
+    <PackageReference Include="Elsa.Workflows.Management" Version="3.2.0-rc2" />
+    <PackageReference Include="Elsa.Workflows.Api" Version="3.2.0-rc2" />
+    <PackageReference Include="Elsa.Persistence.EntityFramework.Sqlite" Version="3.2.0-rc2" />
+    <PackageReference Include="Elsa.Persistence.EntityFramework.PostgreSql" Version="3.2.0-rc2" />
   </ItemGroup>
  
 </Project>

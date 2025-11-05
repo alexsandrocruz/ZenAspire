@@ -1,0 +1,220 @@
+using CleanAspire.Api.Workflows.Activities;
+using Elsa.Workflows;
+using Elsa.Workflows.Activities;
+using Elsa.Workflows.Contracts;
+using Elsa.Workflows.Models;
+
+namespace CleanAspire.Api.Workflows.Workflows;
+
+/// <summary>
+/// Workflow for rebuilding a single customer segment
+/// </summary>
+public class SegmentRebuildWorkflow : WorkflowBase
+{
+    protected override void Build(IWorkflowBuilder builder)
+    {
+        builder
+            .Name = "Segment Rebuild Workflow"
+            .DefinitionId = "segment-rebuild-workflow"
+            .Version = 1
+            .DisplayName("Segment Rebuild")
+            .Description("Rebuilds a customer segment by evaluating rules and updating memberships")
+            .Tag("segments", "rebuild", "automation");
+
+        // Define inputs
+        builder.WithInput(
+            new WorkflowInputDefinition
+            {
+                Name = "SegmentId",
+                Type = typeof(Guid),
+                Description = "ID of the segment to rebuild",
+                IsRequired = true
+            });
+
+        builder.WithInput(
+            new WorkflowInputDefinition
+            {
+                Name = "ForceRebuild",
+                Type = typeof(bool),
+                Description = "Force rebuild even if recently built",
+                DefaultValue = false
+            });
+
+        builder.WithInput(
+            new WorkflowInputDefinition
+            {
+                Name = "TriggeredBy",
+                Type = typeof(string),
+                Description = "User or system that triggered the rebuild"
+            });
+
+        // Define outputs
+        builder.WithOutput(
+            new WorkflowOutputDefinition
+            {
+                Name = "SegmentId",
+                Type = typeof(Guid),
+                Description = "ID of the rebuilt segment"
+            });
+
+        builder.WithOutput(
+            new WorkflowOutputDefinition
+            {
+                Name = "MemberCount",
+                Type = typeof(int),
+                Description = "Total members in the rebuilt segment"
+            });
+
+        builder.WithOutput(
+            new WorkflowOutputDefinition
+            {
+                Name = "DurationMs",
+                Type = typeof(long),
+                Description = "Duration of rebuild in milliseconds"
+            });
+
+        builder.WithOutput(
+            new WorkflowOutputDefinition
+            {
+                Name = "Success",
+                Type = typeof(bool),
+                Description = "Whether the rebuild was successful"
+            });
+
+        // Build the workflow steps
+        builder.Root = new Sequence
+        {
+            Activities =
+            {
+                // Step 1: Log start of rebuild
+                new WriteLine("Starting segment rebuild...")
+                {
+                    Text = new Input<string>("Starting rebuild of segment: {SegmentId}"),
+                    Result = new Output<object>("StartLog")
+                },
+
+                // Step 2: Execute rebuild activity
+                new RebuildSegmentActivity
+                {
+                    SegmentId = new Input<Guid>("SegmentId"),
+                    ForceRebuild = new Input<bool>("ForceRebuild"),
+                    TriggeredBy = new Input<string>("TriggeredBy"),
+                    Result = new Output<object>("RebuildResult")
+                },
+
+                // Step 3: Log completion
+                new WriteLine("Segment rebuild completed")
+                {
+                    Text = new Input<string>("Segment rebuild completed. Members: {MemberCount}, Duration: {DurationMs}ms"),
+                    Result = new Output<object>("CompletionLog")
+                }
+            }
+        };
+    }
+}
+
+/// <summary>
+/// Workflow for automatically rebuilding all active segments
+/// </summary>
+public class SegmentAutoRebuildWorkflow : WorkflowBase
+{
+    protected override void Build(IWorkflowBuilder builder)
+    {
+        builder
+            .Name = "Auto Segment Rebuild Workflow"
+            .DefinitionId = "auto-segment-rebuild-workflow"
+            .Version = 1
+            .DisplayName("Auto Segment Rebuild")
+            .Description("Automatically rebuilds all active segments on a schedule")
+            .Tag("segments", "rebuild", "automation", "scheduled");
+
+        // Define outputs
+        builder.WithOutput(
+            new WorkflowOutputDefinition
+            {
+                Name = "RebuiltSegments",
+                Type = typeof(int),
+                Description = "Number of segments rebuilt"
+            });
+
+        builder.WithOutput(
+            new WorkflowOutputDefinition
+            {
+                Name = "TotalMembers",
+                Type = typeof(int),
+                Description = "Total members across all rebuilt segments"
+            });
+
+        builder.WithOutput(
+            new WorkflowOutputDefinition
+            {
+                Name = "Success",
+                Type = typeof(bool),
+                Description = "Whether all rebuilds were successful"
+            });
+
+        // Build the workflow steps
+        builder.Root = new Sequence
+        {
+            Activities =
+            {
+                // Step 1: Log start
+                new WriteLine("Starting auto segment rebuild...")
+                {
+                    Text = new Input<string>("Starting automatic rebuild of all active segments"),
+                    Result = new Output<object>("StartLog")
+                },
+
+                // Step 2: TODO - Get all active segments
+                new WriteLine("Getting active segments...")
+                {
+                    Text = new Input<string>("Retrieving list of active segments"),
+                    Result = new Output<object>("GetSegmentsLog")
+                },
+
+                // Step 3: TODO - Loop through segments and rebuild each
+                new WriteLine("Rebuilding segments...")
+                {
+                    Text = new Input<string>("Processing segments for rebuild"),
+                    Result = new Output<object>("ProcessLog")
+                },
+
+                // Step 4: Log completion
+                new WriteLine("Auto rebuild completed")
+                {
+                    Text = new Input<string>("Automatic segment rebuild completed"),
+                    Result = new Output<object>("CompletionLog")
+                }
+            }
+        };
+    }
+}
+
+/// <summary>
+/// Helper activity for writing log messages
+/// </summary>
+[Activity("Elsa", "Logging", "Write line to log")]
+public class WriteLine : CodeActivity
+{
+    [Input(
+        Description = "Text to write",
+        DisplayName = "Text"
+    )]
+    public Input<string> Text { get; set; } = new();
+
+    [Output(
+        Description = "Log entry result",
+        DisplayName = "Result"
+    )]
+    public Output<object?> Result { get; set; } = new();
+
+    protected override void Execute(ActivityExecutionContext context)
+    {
+        var logger = context.GetService<ILogger<WriteLine>>();
+        var text = context.GetInput(Text);
+
+        logger.LogInformation("Workflow: {Text}", text);
+
+        context.Set(Result, new { Message = text, Timestamp = DateTime.UtcNow });
+    }
+}

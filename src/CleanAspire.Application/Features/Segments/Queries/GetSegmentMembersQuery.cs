@@ -37,7 +37,7 @@ public class GetSegmentMembersQueryHandler : IRequestHandler<GetSegmentMembersQu
     {
         // Base query
         var query = _context.SegmentMemberships
-            .Where(sm => sm.SegmentId == request.SegmentId);
+            .Where(sm => sm.SegmentId == request.SegmentId.ToString());
 
         // Filter by owner type
         if (request.OwnerType.HasValue)
@@ -79,12 +79,12 @@ public class GetSegmentMembersQueryHandler : IRequestHandler<GetSegmentMembersQu
         var members = await query
             .Select(sm => new SegmentMembershipDto
             {
-                SegmentId = sm.SegmentId,
+                SegmentId = Guid.Parse(sm.SegmentId),
                 SegmentName = sm.Segment.Name,
                 TenantId = sm.TenantId,
                 OwnerType = sm.OwnerType,
                 OwnerTypeDisplay = sm.OwnerType.ToString(),
-                OwnerId = sm.OwnerId,
+                OwnerId = Guid.Parse(sm.OwnerId),
                 OwnerName = sm.OwnerType == OwnerType.Client
                     ? _context.Clients
                         .Where(c => c.Id == sm.OwnerId.ToString())

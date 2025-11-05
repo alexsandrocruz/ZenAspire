@@ -30,6 +30,14 @@
         <PackageReference Include="Scrutor" Version="6.1.0" />
        
         <PackageReference Include="StrongGrid" Version="0.112.0" />
+
+        <!-- Elsa Workflows Packages -->
+        <PackageReference Include="Elsa.Workflows.Core" Version="2.15.2" />
+        <PackageReference Include="Elsa.Workflows.Runtime" Version="2.15.2" />
+        <PackageReference Include="Elsa.Workflows.Management" Version="2.15.2" />
+        <PackageReference Include="Elsa.Persistence.EntityFramework.Sqlite" Version="2.15.2" />
+        <PackageReference Include="Elsa.Persistence.EntityFramework.PostgreSql" Version="2.15.2" />
+        <PackageReference Include="Elsa.Server.Api" Version="2.15.2" />
     </ItemGroup>
     <ItemGroup>
         <ProjectReference Include="..\CleanAspire.ServiceDefaults\CleanAspire.ServiceDefaults.csproj" />

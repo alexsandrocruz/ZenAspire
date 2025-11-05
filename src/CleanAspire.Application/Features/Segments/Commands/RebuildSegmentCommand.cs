@@ -1,5 +1,6 @@
 using CleanAspire.Application.Common.Interfaces;
 using CleanAspire.Application.Features.Segments.DTOs;
+using CleanAspire.Application.Features.Segments.Services;
 using CleanAspire.Application.Pipeline;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,15 +25,18 @@ public class RebuildSegmentCommandHandler : IRequestHandler<RebuildSegmentComman
     private readonly IApplicationDbContext _context;
     private readonly ICurrentUserService _currentUser;
     private readonly ILogger<RebuildSegmentCommandHandler> _logger;
+    private readonly ISegmentRebuilderService _segmentRebuilder;
 
     public RebuildSegmentCommandHandler(
         IApplicationDbContext context,
         ICurrentUserService currentUser,
-        ILogger<RebuildSegmentCommandHandler> logger)
+        ILogger<RebuildSegmentCommandHandler> logger,
+        ISegmentRebuilderService segmentRebuilder)
     {
         _context = context;
         _currentUser = currentUser;
         _logger = logger;
+        _segmentRebuilder = segmentRebuilder;
     }
 
     public async ValueTask<SegmentStatsDto> Handle(RebuildSegmentCommand request, CancellationToken cancellationToken)
@@ -53,43 +57,32 @@ public class RebuildSegmentCommandHandler : IRequestHandler<RebuildSegmentComman
         if (!segment.IsActive)
             throw new InvalidOperationException("Cannot rebuild an inactive segment");
 
-        // Check if rebuild is needed (unless forced)
-        if (!request.ForceRebuild && segment.LastRebuiltAt.HasValue &&
-            (DateTime.UtcNow - segment.LastRebuiltAt.Value).TotalMinutes < 30)
-        {
-            _logger.LogInformation("Segment {SegmentId} was rebuilt recently, skipping", segment.Id);
-        }
-
+        
         try
         {
-            // TODO: Trigger Elsa workflow here
-            // For now, we'll implement a simple rebuild logic
+            // Use the segment rebuilder service
+            var rebuildResult = await _segmentRebuilder.RebuildSegmentAsync(request.Id, request.ForceRebuild, cancellationToken);
 
-            // Clear existing memberships
-            _context.SegmentMemberships.RemoveRange(segment.Memberships);
+            if (!rebuildResult.Success)
+            {
+                throw new InvalidOperationException($"Failed to rebuild segment: {rebuildResult.ErrorMessage}");
+            }
 
-            // TODO: Implement actual segment evaluation logic here
-            // This will be implemented in the Rule Engine step
-
-            // Update segment metadata
-            segment.LastRebuiltAt = DateTime.UtcNow;
-            segment.MemberCount = 0; // Will be updated after rebuild
-
-            _context.Segments.Update(segment);
-            await _context.SaveChangesAsync(cancellationToken);
+            // Get updated stats
+            var stats = await _segmentRebuilder.GetRebuildStatsAsync(request.Id, cancellationToken);
 
             // Return updated stats
             return new SegmentStatsDto
             {
-                SegmentId = Guid.Parse(segment.Id),
-                SegmentName = segment.Name,
-                TotalMembers = 0,
-                ClientMembers = 0,
-                ContactMembers = 0,
-                LastRebuiltAt = segment.LastRebuiltAt,
-                RebuildDuration = TimeSpan.Zero,
-                RulesCount = 1, // TODO: Count actual rules
-                IsActive = segment.IsActive
+                SegmentId = rebuildResult.SegmentId,
+                SegmentName = rebuildResult.SegmentName,
+                TotalMembers = rebuildResult.NewMemberCount,
+                ClientMembers = rebuildResult.NewMemberCount, // TODO: Calculate actual split
+                ContactMembers = 0, // TODO: Calculate actual split
+                LastRebuiltAt = rebuildResult.EndTime,
+                RebuildDuration = rebuildResult.Duration,
+                RulesCount = 1, // TODO: Count actual rules from definition
+                IsActive = true // TODO: Get from segment entity
             };
         }
         catch (Exception ex)

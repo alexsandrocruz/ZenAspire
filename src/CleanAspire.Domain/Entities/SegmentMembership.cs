@@ -11,7 +11,7 @@ public class SegmentMembership
     /// <summary>
     /// Segment identifier
     /// </summary>
-    public Guid SegmentId { get; set; }
+    public string SegmentId { get; set; } = string.Empty;
 
     /// <summary>
     /// Tenant identifier for multi-tenancy support
@@ -26,7 +26,7 @@ public class SegmentMembership
     /// <summary>
     /// ID of the entity (Client/Contact/etc.)
     /// </summary>
-    public Guid OwnerId { get; set; }
+    public string OwnerId { get; set; } = string.Empty;
 
     /// <summary>
     /// When this membership was computed

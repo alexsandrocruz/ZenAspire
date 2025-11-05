@@ -1,0 +1,205 @@
+using CleanAspire.Application.Features.Segments.Commands;
+using CleanAspire.Application.Common.Interfaces;
+using Elsa.Expressions.Models;
+using Elsa.Extensions;
+using Elsa.Workflows;
+using Elsa.Workflows.Activities;
+using Elsa.Workflows.Contracts;
+using Elsa.Workflows.Models;
+using Elsa.Workflows.Services;
+using Microsoft.Extensions.DependencyInjection;
+using Mediator;
+
+namespace CleanAspire.Api.Workflows.Activities;
+
+/// <summary>
+/// Custom Elsa activity for rebuilding a segment
+/// </summary>
+[Activity("Elsa", "Segment", "Rebuild a customer segment")]
+public class RebuildSegmentActivity : Activity
+{
+    [Input(
+        Description = "Segment ID to rebuild",
+        DisplayName = "Segment ID"
+    )]
+    public Input<Guid> SegmentId { get; set; } = new();
+
+    [Input(
+        Description = "Force rebuild even if recently built",
+        DisplayName = "Force Rebuild",
+        DefaultValue = false
+    )]
+    public Input<bool> ForceRebuild { get; set; } = new(false);
+
+    [Input(
+        Description = "User who triggered the rebuild",
+        DisplayName = "Triggered By"
+    )]
+    public Input<string?> TriggeredBy { get; set; } = new();
+
+    [Output(
+        Description = "The segment ID that was rebuilt",
+        DisplayName = "Segment ID"
+    )]
+    public Output<Guid> RebuiltSegmentId { get; set; } = new();
+
+    [Output(
+        Description = "Total members in the rebuilt segment",
+        DisplayName = "Member Count"
+    )]
+    public Output<int> MemberCount { get; set; } = new();
+
+    [Output(
+        Description = "Duration of rebuild in milliseconds",
+        DisplayName = "Duration (ms)"
+    )]
+    public Output<long> DurationMs { get; set; } = new();
+
+    [Output(
+        Description = "Whether the rebuild was successful",
+        DisplayName = "Success"
+    )]
+    public Output<bool> Success { get; set; } = new();
+
+    [Output(
+        Description = "Error message if rebuild failed",
+        DisplayName = "Error"
+    )]
+    public Output<string?> ErrorMessage { get; set; } = new();
+
+    protected override async ValueTask ExecuteAsync(ActivityExecutionContext context)
+    {
+        var logger = context.GetService<ILogger<RebuildSegmentActivity>>();
+        var cancellationToken = context.CancellationToken;
+        var segmentId = context.GetInput(SegmentId);
+        var forceRebuild = context.GetInput(ForceRebuild);
+        var triggeredBy = context.GetInput(TriggeredBy);
+
+        logger.LogInformation("Starting rebuild of segment {SegmentId} (Force: {ForceRebuild}, TriggeredBy: {TriggeredBy})",
+            segmentId, forceRebuild, triggeredBy);
+
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+
+        try
+        {
+            // Get mediator from service provider
+            var mediator = context.GetService<IMediator>();
+
+            // Create rebuild command
+            var command = new RebuildSegmentCommand
+            {
+                Id = segmentId,
+                ForceRebuild = forceRebuild
+            };
+
+            // Execute rebuild command
+            var result = await mediator.Send(command, cancellationToken);
+
+            // Set output values
+            stopwatch.Stop();
+
+            context.SetResult(Outcome.Succeeded);
+            context.Set(RebuiltSegmentId, segmentId);
+            context.Set(MemberCount, result.TotalMembers);
+            context.Set(DurationMs, stopwatch.ElapsedMilliseconds);
+            context.Set(Success, true);
+            context.Set(ErrorMessage, (string?)null);
+
+            logger.LogInformation("Successfully rebuilt segment {SegmentId} with {MemberCount} members in {Duration}ms",
+                segmentId, result.TotalMembers, stopwatch.ElapsedMilliseconds);
+        }
+        catch (Exception ex)
+        {
+            stopwatch.Stop();
+
+            logger.LogError(ex, "Failed to rebuild segment {SegmentId}", segmentId);
+
+            // Set error output values
+            context.SetResult(Outcome.Failed);
+            context.Set(RebuiltSegmentId, segmentId);
+            context.Set(MemberCount, 0);
+            context.Set(DurationMs, stopwatch.ElapsedMilliseconds);
+            context.Set(Success, false);
+            context.Set(ErrorMessage, ex.Message);
+
+            // Rethrow the exception to mark the workflow as failed
+            throw;
+        }
+    }
+}
+
+/// <summary>
+/// Custom Elsa activity for evaluating segment rules
+/// </summary>
+[Activity("Elsa", "Segment", "Evaluate segment rules")]
+public class EvaluateSegmentRulesActivity : Activity
+{
+    [Input(
+        Description = "Segment ID to evaluate",
+        DisplayName = "Segment ID"
+    )]
+    public Input<Guid> SegmentId { get; set; } = new();
+
+    [Output(
+        Description = "List of matching owner IDs",
+        DisplayName = "Matching Owner IDs"
+    )]
+    public Output<List<Guid>> MatchingOwners { get; set; } = new();
+
+    [Output(
+        Description = "Total number of matches found",
+        DisplayName = "Match Count"
+    )]
+    public Output<int> MatchCount { get; set; } = new();
+
+    [Output(
+        Description = "Whether the evaluation was successful",
+        DisplayName = "Success"
+    )]
+    public Output<bool> Success { get; set; } = new();
+
+    [Output(
+        Description = "Error message if evaluation failed",
+        DisplayName = "Error"
+    )]
+    public Output<string?> ErrorMessage { get; set; } = new();
+
+    protected override async ValueTask ExecuteAsync(ActivityExecutionContext context)
+    {
+        var logger = context.GetService<ILogger<EvaluateSegmentRulesActivity>>();
+        var cancellationToken = context.CancellationToken;
+        var segmentId = context.GetInput(SegmentId);
+
+        logger.LogInformation("Evaluating rules for segment {SegmentId}", segmentId);
+
+        try
+        {
+            // TODO: Implement segment rule evaluation logic
+            // This will be implemented in the Rule Engine phase
+
+            // For now, return placeholder results
+            var matchingOwners = new List<Guid>();
+
+            context.SetResult(Outcome.Succeeded);
+            context.Set(MatchingOwners, matchingOwners);
+            context.Set(MatchCount, matchingOwners.Count);
+            context.Set(Success, true);
+            context.Set(ErrorMessage, (string?)null);
+
+            logger.LogInformation("Evaluated segment {SegmentId}, found {Count} matches",
+                segmentId, matchingOwners.Count);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Failed to evaluate rules for segment {SegmentId}", segmentId);
+
+            context.SetResult(Outcome.Failed);
+            context.Set(MatchingOwners, new List<Guid>());
+            context.Set(MatchCount, 0);
+            context.Set(Success, false);
+            context.Set(ErrorMessage, ex.Message);
+
+            throw;
+        }
+    }
+}

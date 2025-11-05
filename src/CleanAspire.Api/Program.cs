@@ -16,6 +16,7 @@ using CleanAspire.Infrastructure.Configurations;
 using Microsoft.AspNetCore.Http.Features;
 using CleanAspire.Api.ExceptionHandlers;
 using CleanAspire.Api.Webpushr;
+using CleanAspire.Api.Extensions;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +29,9 @@ builder.Services.Configure<WebpushrOptions>(builder.Configuration.GetSection(Web
 
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+
+// Add Elsa Workflows
+builder.Services.AddElsaWorkflows(builder.Configuration);
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultScheme = IdentityConstants.ApplicationScheme;
@@ -106,6 +110,7 @@ var app = builder.Build();
 await app.InitializeDatabaseAsync();
 // Configure the HTTP request pipeline.
 app.UseExceptionHandler();
+app.UseElsaWorkflows(); // Add Elsa Workflows middleware
 app.MapEndpointDefinitions();
 app.UseCors("wasm");
 app.UseAntiforgery();
@@ -127,6 +132,9 @@ app.Use(async (context, next) =>
 app.MapDefaultEndpoints();
 app.MapIdentityApi<ApplicationUser>();
 app.MapIdentityApiAdditionalEndpoints<ApplicationUser>();
+
+// Map Elsa Workflows endpoints
+app.MapElsaWorkflowsEndpoints();
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();

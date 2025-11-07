@@ -20,6 +20,8 @@
       </PackageReference>
       <PackageReference Include="ZiggyCreatures.FusionCache" Version="2.4.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0-rc.1.25451.107" />
+    <PackageReference Include="MediatR" Version="12.4.0" />
     <ProjectReference Include="..\CleanAspire.Domain\CleanAspire.Domain.csproj" />
   </ItemGroup>
 

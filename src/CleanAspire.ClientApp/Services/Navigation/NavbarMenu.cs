@@ -126,6 +126,34 @@ public static class NavbarMenu
                             Href = "/timeline",
                             Status = PageStatus.New,
                             Description = "Unified timeline view of all activities, interactions, and notes."
+                        },
+                        new MenuItem
+                        {
+                            Label = "Segments",
+                            SubItems = new List<MenuItem>
+                            {
+                                new MenuItem
+                                {
+                                    Label = "All Segments",
+                                    Href = "/segments/index",
+                                    Status = PageStatus.New,
+                                    Description = "View and manage all customer segments."
+                                },
+                                new MenuItem
+                                {
+                                    Label = "Create Segment",
+                                    Href = "/segments/create",
+                                    Status = PageStatus.New,
+                                    Description = "Create a new customer segment with advanced rules."
+                                },
+                                new MenuItem
+                                {
+                                    Label = "Segment Analytics",
+                                    Href = "/segments/analytics",
+                                    Status = PageStatus.ComingSoon,
+                                    Description = "Analytics and insights for segment performance."
+                                }
+                            }
                         }
                     }
                 },

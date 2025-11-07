@@ -71,6 +71,7 @@ public class GetSegmentFieldsQueryHandler : IRequestHandler<GetSegmentFieldsQuer
     {
         return new List<OperatorDefinitionDto>
         {
+            // Basic comparison operators
             new()
             {
                 Name = "eq",
@@ -87,6 +88,8 @@ public class GetSegmentFieldsQueryHandler : IRequestHandler<GetSegmentFieldsQuer
                 SupportedTypes = new List<string> { "String", "Int32", "DateTime", "Boolean", "Double" },
                 RequiresArrayValue = false
             },
+
+            // Numeric/date comparison operators
             new()
             {
                 Name = "gt",
@@ -119,11 +122,21 @@ public class GetSegmentFieldsQueryHandler : IRequestHandler<GetSegmentFieldsQuer
                 SupportedTypes = new List<string> { "Int32", "DateTime", "Double" },
                 RequiresArrayValue = false
             },
+
+            // String operators
             new()
             {
                 Name = "contains",
                 DisplayName = "Contains",
-                Description = "String contains the specified value",
+                Description = "String contains the specified value (case-insensitive)",
+                SupportedTypes = new List<string> { "String" },
+                RequiresArrayValue = false
+            },
+            new()
+            {
+                Name = "notcontains",
+                DisplayName = "Does Not Contain",
+                Description = "String does not contain the specified value (case-insensitive)",
                 SupportedTypes = new List<string> { "String" },
                 RequiresArrayValue = false
             },
@@ -131,7 +144,7 @@ public class GetSegmentFieldsQueryHandler : IRequestHandler<GetSegmentFieldsQuer
             {
                 Name = "startswith",
                 DisplayName = "Starts With",
-                Description = "String starts with the specified value",
+                Description = "String starts with the specified value (case-insensitive)",
                 SupportedTypes = new List<string> { "String" },
                 RequiresArrayValue = false
             },
@@ -139,17 +152,155 @@ public class GetSegmentFieldsQueryHandler : IRequestHandler<GetSegmentFieldsQuer
             {
                 Name = "endswith",
                 DisplayName = "Ends With",
-                Description = "String ends with the specified value",
+                Description = "String ends with the specified value (case-insensitive)",
+                SupportedTypes = new List<string> { "String" },
+                RequiresArrayValue = false
+            },
+
+            // Collection operators
+            new()
+            {
+                Name = "in",
+                DisplayName = "In List",
+                Description = "Value is in the specified list of values (JSON array or comma-separated)",
+                SupportedTypes = new List<string> { "String", "Int32", "Boolean" },
+                RequiresArrayValue = true
+            },
+            new()
+            {
+                Name = "notin",
+                DisplayName = "Not In List",
+                Description = "Value is not in the specified list of values",
+                SupportedTypes = new List<string> { "String", "Int32", "Boolean" },
+                RequiresArrayValue = true
+            },
+
+            // Range operators
+            new()
+            {
+                Name = "between",
+                DisplayName = "Between",
+                Description = "Value is between the specified range (format: min,max)",
+                SupportedTypes = new List<string> { "String", "Int32", "DateTime", "Double" },
+                RequiresArrayValue = false
+            },
+            new()
+            {
+                Name = "notbetween",
+                DisplayName = "Not Between",
+                Description = "Value is not between the specified range",
+                SupportedTypes = new List<string> { "String", "Int32", "DateTime", "Double" },
+                RequiresArrayValue = false
+            },
+
+            // Null/Empty operators
+            new()
+            {
+                Name = "isnull",
+                DisplayName = "Is Null",
+                Description = "Value is null",
+                SupportedTypes = new List<string> { "String", "Int32", "DateTime", "Boolean", "Double" },
+                RequiresArrayValue = false
+            },
+            new()
+            {
+                Name = "isnotnull",
+                DisplayName = "Is Not Null",
+                Description = "Value is not null",
+                SupportedTypes = new List<string> { "String", "Int32", "DateTime", "Boolean", "Double" },
+                RequiresArrayValue = false
+            },
+            new()
+            {
+                Name = "isempty",
+                DisplayName = "Is Empty",
+                Description = "String value is empty or null",
                 SupportedTypes = new List<string> { "String" },
                 RequiresArrayValue = false
             },
             new()
             {
-                Name = "in",
-                DisplayName = "In List",
-                Description = "Value is in the specified list of values",
-                SupportedTypes = new List<string> { "String", "Int32", "Boolean" },
-                RequiresArrayValue = true
+                Name = "isnotempty",
+                DisplayName = "Is Not Empty",
+                Description = "String value is not empty and not null",
+                SupportedTypes = new List<string> { "String" },
+                RequiresArrayValue = false
+            },
+
+            // Regex operators
+            new()
+            {
+                Name = "regex",
+                DisplayName = "Regex Match",
+                Description = "String matches the regular expression pattern",
+                SupportedTypes = new List<string> { "String" },
+                RequiresArrayValue = false
+            },
+            new()
+            {
+                Name = "notregex",
+                DisplayName = "Does Not Match Regex",
+                Description = "String does not match the regular expression pattern",
+                SupportedTypes = new List<string> { "String" },
+                RequiresArrayValue = false
+            },
+
+            // Date operators
+            new()
+            {
+                Name = "today",
+                DisplayName = "Is Today",
+                Description = "Date is today",
+                SupportedTypes = new List<string> { "DateTime" },
+                RequiresArrayValue = false
+            },
+            new()
+            {
+                Name = "yesterday",
+                DisplayName = "Is Yesterday",
+                Description = "Date is yesterday",
+                SupportedTypes = new List<string> { "DateTime" },
+                RequiresArrayValue = false
+            },
+            new()
+            {
+                Name = "thisweek",
+                DisplayName = "Is This Week",
+                Description = "Date is within the current week",
+                SupportedTypes = new List<string> { "DateTime" },
+                RequiresArrayValue = false
+            },
+            new()
+            {
+                Name = "thismonth",
+                DisplayName = "Is This Month",
+                Description = "Date is within the current month",
+                SupportedTypes = new List<string> { "DateTime" },
+                RequiresArrayValue = false
+            },
+            new()
+            {
+                Name = "thisyear",
+                DisplayName = "Is This Year",
+                Description = "Date is within the current year",
+                SupportedTypes = new List<string> { "DateTime" },
+                RequiresArrayValue = false
+            },
+            new()
+            {
+                Name = "lastndays",
+                DisplayName = "Last N Days",
+                Description = "Date is within the last N days (value = number of days)",
+                SupportedTypes = new List<string> { "DateTime" },
+                RequiresArrayValue = false
+            },
+            new()
+            {
+                Name = "lastnmonths",
+                DisplayName = "Last N Months",
+                Description = "Date is within the last N months (value = number of months)",
+                SupportedTypes = new List<string> { "DateTime" },
+                RequiresArrayValue = false
             }
         };
     }

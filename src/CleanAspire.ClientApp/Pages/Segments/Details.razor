@@ -1,0 +1,410 @@
+@page "/segments/{id:guid}"
+@using CleanAspire.ClientApp.Models.Segments
+@using CleanAspire.ClientApp.Services.Segments
+@using CleanAspire.ClientApp.Components.Segments
+@using CleanAspire.ClientApp.Shared
+@inject SegmentService SegmentService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Segment Details</PageTitle>
+
+@if (_loading)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 400px;">
+            <MudProgressCircular Indeterminate="true" />
+            <MudText>Loading segment details...</MudText>
+        </MudStack>
+    </MudContainer>
+}
+else if (_segment != null)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+        <MudStack Spacing="4">
+            <!-- Header -->
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudStack Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudStack Spacing="2">
+                        <MudStack Direction="Direction.Horizontal" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudText Typo="Typo.h4" Color="Color.Primary">@_segment.Name</MudText>
+                            <MudChip T="string" Size="Size.Small" Color="@(_segment.IsActive ? Color.Success : Color.Default)">
+                                @_segment.StatusDisplay
+                            </MudChip>
+                        </MudStack>
+                        @if (!string.IsNullOrEmpty(_segment.Description))
+                        {
+                            <MudText Typo="Typo.body1" Color="Color.Surface">@_segment.Description</MudText>
+                        }
+                    </MudStack>
+                    <MudStack Direction="Direction.Horizontal" Spacing="2">
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Edit" @onclick="NavigateToEdit">
+                            Edit
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.Refresh" @onclick="RebuildSegment" Loading="@_rebuilding">
+                            Rebuild
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" @onclick="NavigateToSegments">
+                            Back
+                        </MudButton>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+
+            <MudGrid>
+                <!-- Statistics Card -->
+                <MudItem xs="12" md="6">
+                    <MudPaper Elevation="1" Class="pa-4">
+                        <MudStack Spacing="3">
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.BarChart" Class="mr-2" />
+                                Statistics
+                            </MudText>
+
+                            @if (_stats != null)
+                            {
+                                <MudStack Spacing="2">
+                                    <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween">
+                                        <MudText Typo="Typo.body1">Total Members:</MudText>
+                                        <MudText Typo="Typo.body1" Weight="Weight.Bold">@_stats.MemberCount:N0</MudText>
+                                    </MudStack>
+
+                                    @if (_stats.LastRebuiltAt.HasValue)
+                                    {
+                                        <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween">
+                                            <MudText Typo="Typo.body1">Last Rebuilt:</MudText>
+                                            <MudText Typo="Typo.body2">@_stats.LastRebuiltAt.Value.ToString("g")</MudText>
+                                        </MudStack>
+                                    }
+
+                                    @if (_stats.EvaluationDuration.HasValue)
+                                    {
+                                        <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween">
+                                            <MudText Typo="Typo.body1">Evaluation Time:</MudText>
+                                            <MudText Typo="Typo.body2">@_stats.EvaluationDuration.Value.TotalMilliseconds:F0} ms</MudText>
+                                        </MudStack>
+                                    }
+
+                                    @if (_stats.MembersByOwnerType.Any())
+                                    {
+                                        <MudText Typo="Typo.subtitle1">Members by Type:</MudText>
+                                        @foreach (var kvp in _stats.MembersByOwnerType)
+                                        {
+                                            <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween">
+                                                <MudText Typo="Typo.body2">@kvp.Key:</MudText>
+                                                <MudText Typo="Typo.body2">@kvp.Value:N0</MudText>
+                                            </MudStack>
+                                        }
+                                    }
+                                </MudStack>
+                            }
+                            else
+                            {
+                                <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 100px;">
+                                    <MudText Typo="Typo.body2" Color="Color.Surface">No statistics available</MudText>
+                                    <MudButton Variant="Variant.Text" Size="Size.Small" @onclick="LoadStats">
+                                        Load Statistics
+                                    </MudButton>
+                                </MudStack>
+                            }
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Metadata Card -->
+                <MudItem xs="12" md="6">
+                    <MudPaper Elevation="1" Class="pa-4">
+                        <MudStack Spacing="3">
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.Info" Class="mr-2" />
+                                Metadata
+                            </MudText>
+
+                            <MudStack Spacing="2">
+                                <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween">
+                                    <MudText Typo="Typo.body1">Segment ID:</MudText>
+                                    <MudText Typo="Typo.body2">@_segment.Id.ToString()[..8]...</MudText>
+                                </MudStack>
+
+                                <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween">
+                                    <MudText Typo="Typo.body1">Created:</MudText>
+                                    <MudText Typo="Typo.body2">@_segment.Created.ToString("g")</MudText>
+                                </MudStack>
+
+                                @if (_segment.LastModified.HasValue)
+                                {
+                                    <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween">
+                                        <MudText Typo="Typo.body1">Last Modified:</MudText>
+                                        <MudText Typo="Typo.body2">@_segment.LastModified.Value.ToString("g")</MudText>
+                                    </MudStack>
+                                }
+
+                                @if (!string.IsNullOrEmpty(_segment.CreatedBy))
+                                {
+                                    <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween">
+                                        <MudText Typo="Typo.body1">Created By:</MudText>
+                                        <MudText Typo="Typo.body2">@_segment.CreatedBy</MudText>
+                                    </MudStack>
+                                }
+                            </MudStack>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Rule Definition Card -->
+                <MudItem xs="12">
+                    <MudPaper Elevation="1" Class="pa-4">
+                        <MudStack Spacing="3">
+                            <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.h6">
+                                    <MudIcon Icon="@Icons.Material.Filled.Code" Class="mr-2" />
+                                    Rule Definition
+                                </MudText>
+                                <MudButton Variant="Variant.Text" Size="Size.Small" @onclick="ToggleJsonView">
+                                    @(_showJson ? "Hide JSON" : "Show JSON")
+                                </MudButton>
+                            </MudStack>
+
+                            @if (_showJson)
+                            {
+                                <MudPaper Class="pa-3" Style="background-color: var(--mud-palette-surface);">
+                                    <MudText Typo="Typo.body2" Family="FontFamily.Monospace">
+                                        <pre>@_segment.DefinitionJson</pre>
+                                    </MudText>
+                                </MudPaper>
+                            }
+                            else
+                            {
+                                @if (!string.IsNullOrEmpty(_segment.DefinitionJson))
+                                {
+                                    <RuleBuilder AvailableFields="@_availableFields"
+                                                 DefinitionJson="@_segment.DefinitionJson"
+                                                 DefinitionJsonChanged="@(async (json) => await Task.CompletedTask)" />
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Surface">No rules defined for this segment</MudText>
+                                }
+                            }
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+
+                <!-- Actions Card -->
+                <MudItem xs="12">
+                    <MudPaper Elevation="1" Class="pa-4">
+                        <MudStack Spacing="3">
+                            <MudText Typo="Typo.h6">
+                                <MudIcon Icon="@Icons.Material.Filled.Build" Class="mr-2" />
+                                Actions
+                            </MudText>
+
+                            <MudStack Spacing="2">
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" @onclick="NavigateToEdit">
+                                    Edit Segment
+                                </MudButton>
+
+                                <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Refresh" @onclick="RebuildSegment" Loading="@_rebuilding">
+                                    Rebuild Now
+                                </MudButton>
+
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Info"
+                                           StartIcon="@Icons.Material.Filled.Group"
+                                           @onclick="ViewMembers">
+                                    View Members
+                                </MudButton>
+
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Secondary"
+                                           StartIcon="@Icons.Material.Filled.Download"
+                                           @onclick="ExportMembers">
+                                    Export Members
+                                </MudButton>
+
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Error"
+                                           StartIcon="@Icons.Material.Filled.Delete"
+                                           @onclick="DeleteSegment">
+                                    Delete Segment
+                                </MudButton>
+                            </MudStack>
+                        </MudStack>
+                    </MudPaper>
+                </MudItem>
+            </MudGrid>
+        </MudStack>
+    </MudContainer>
+}
+else
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+        <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 400px;">
+            <MudIcon Icon="@Icons.Material.Filled.Error" Size="Size.Large" Color="Color.Error" />
+            <MudText Typo="Typo.h6">Segment not found</MudText>
+            <MudText Typo="Typo.body1" Color="Color.Surface">The segment you're looking for doesn't exist or has been deleted.</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="NavigateToSegments">
+                Back to Segments
+            </MudButton>
+        </MudStack>
+    </MudContainer>
+}
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private SegmentDto? _segment;
+    private SegmentStatsDto? _stats;
+    private SegmentFieldsResponseDto? _availableFields;
+    private bool _loading = true;
+    private bool _rebuilding = false;
+    private bool _showJson = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSegment();
+    }
+
+    private async Task LoadSegment()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            _segment = await SegmentService.GetSegmentByIdAsync(Id);
+            if (_segment != null)
+            {
+                await LoadAvailableFields();
+                await LoadStats();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading segment: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadStats()
+    {
+        try
+        {
+            _stats = await SegmentService.GetSegmentStatsAsync(Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading segment statistics: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadAvailableFields()
+    {
+        try
+        {
+            _availableFields = await SegmentService.GetAvailableFieldsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading available fields: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task RebuildSegment()
+    {
+        if (_segment == null) return;
+
+        _rebuilding = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await SegmentService.RebuildSegmentAsync(_segment.Id, forceRebuild: true);
+            if (result != null)
+            {
+                Snackbar.Add($"Segment rebuilt successfully. {result.MemberCount} members found.", Severity.Success);
+                _stats = result; // Update stats with new rebuild data
+            }
+            else
+            {
+                Snackbar.Add("Failed to rebuild segment", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error rebuilding segment: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _rebuilding = false;
+        }
+    }
+
+    private void ToggleJsonView()
+    {
+        _showJson = !_showJson;
+    }
+
+    private void ViewMembers()
+    {
+        NavigationManager.NavigateTo($"/segments/{Id}/members");
+    }
+
+    private void ExportMembers()
+    {
+        // TODO: Implement export functionality
+        Snackbar.Add("Export functionality coming soon", Severity.Info);
+    }
+
+    private void NavigateToSegments()
+    {
+        NavigationManager.NavigateTo("/segments");
+    }
+
+    private void NavigateToEdit()
+    {
+        NavigationManager.NavigateTo($"/segments/edit/{_segment.Id}");
+    }
+
+    private async Task DeleteSegment()
+    {
+        if (_segment == null) return;
+
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Are you sure you want to delete the segment '{_segment.Name}'? This action cannot be undone." },
+            { "ButtonText", "Delete" },
+            { "Color", Color.Error }
+        };
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+
+        var dialog = DialogService.Show<DeleteConfirmationDialog>("Delete Segment", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                var success = await SegmentService.DeleteSegmentAsync(_segment.Id);
+                if (success)
+                {
+                    Snackbar.Add($"Segment '{_segment.Name}' deleted successfully", Severity.Success);
+                    NavigationManager.NavigateTo("/segments");
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete segment", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting segment: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

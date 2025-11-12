@@ -1,0 +1,196 @@
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Note" Class="mr-3" />
+            @(Note != null ? "Edit Note" : "New Note")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="@_success" @bind-Errors="@_errors">
+            <MudStack Spacing="3">
+                <!-- Title -->
+                <MudTextField T="string"
+                              @bind-Value="_model.Title"
+                              Label="Title"
+                              MaxLength="200"
+                              Counter="200"
+                              Immediate="true"
+                              Variant="Variant.Outlined"
+                              HelperText="Optional: Give your note a descriptive title" />
+
+                <!-- Body -->
+                <MudTextField T="string"
+                              @bind-Value="_model.Body"
+                              Label="Note Content *"
+                              Required="true"
+                              RequiredError="Note content is required"
+                              Lines="8"
+                              MaxLength="5000"
+                              Counter="5000"
+                              Immediate="true"
+                              Variant="Variant.Outlined"
+                              Placeholder="Write your note here..." />
+
+                <!-- Options -->
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="6">
+                        <MudSwitch T="bool"
+                                   @bind-Checked="_model.IsPinned"
+                                   Color="Color.Warning"
+                                   Label="Pin this note"
+                                   UnCheckedColor="Color.Default">
+                            <MudIcon Icon="@Icons.Material.Filled.PushPin" Size="Size.Small" Class="mr-2" />
+                        </MudSwitch>
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudSwitch T="bool"
+                                   @bind-Checked="_model.IsPrivate"
+                                   Color="Color.Error"
+                                   Label="Mark as private"
+                                   UnCheckedColor="Color.Default">
+                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Class="mr-2" />
+                        </MudSwitch>
+                    </MudItem>
+                </MudGrid>
+
+                @if (_model.IsPinned)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Icon="@Icons.Material.Filled.Info">
+                        Pinned notes will appear at the top of the notes list
+                    </MudAlert>
+                }
+
+                @if (_model.IsPrivate)
+                {
+                    <MudAlert Severity="Severity.Warning" Dense="true" Icon="@Icons.Material.Filled.Lock">
+                        Private notes are only visible to you
+                    </MudAlert>
+                }
+
+                @if (_errors?.Length > 0)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">
+                        @foreach (var error in _errors)
+                        {
+                            <MudText Typo="Typo.body2">@error</MudText>
+                        }
+                    </MudAlert>
+                }
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!_success || _isSubmitting)">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+            }
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    /// <summary>
+    /// Cascading parameter for MudDialog instance
+    /// </summary>
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>
+    /// Note to edit. If null, creates a new note.
+    /// </summary>
+    [Parameter]
+    public NoteDto? Note { get; set; }
+
+    /// <summary>
+    /// Required for create mode: Type of entity this note belongs to
+    /// </summary>
+    [Parameter]
+    public OwnerType OwnerType { get; set; }
+
+    /// <summary>
+    /// Required for create mode: ID of the entity this note belongs to
+    /// </summary>
+    [Parameter]
+    public Guid OwnerId { get; set; }
+
+    private MudForm? _form;
+    private bool _success = false;
+    private string[] _errors = Array.Empty<string>();
+    private bool _isSubmitting = false;
+    private NoteRequest _model = new();
+
+    protected override void OnInitialized()
+    {
+        if (Note != null)
+        {
+            // Edit mode - populate from existing note
+            _model = new NoteRequest
+            {
+                OwnerType = Note.OwnerType,
+                OwnerId = Note.OwnerId,
+                Title = Note.Title,
+                Body = Note.Body,
+                IsPinned = Note.IsPinned,
+                IsPrivate = Note.IsPrivate
+            };
+        }
+        else
+        {
+            // Create mode - set defaults
+            _model = new NoteRequest
+            {
+                OwnerType = OwnerType,
+                OwnerId = OwnerId,
+                IsPinned = false,
+                IsPrivate = false,
+                Body = string.Empty
+            };
+        }
+    }
+
+    /// <summary>
+    /// Validates and submits the note form
+    /// </summary>
+    private async Task Submit()
+    {
+        if (_form == null || !_form.IsValid)
+        {
+            Snackbar.Add("Please correct the validation errors", Severity.Error);
+            return;
+        }
+
+        // Validate body content
+        if (string.IsNullOrWhiteSpace(_model.Body))
+        {
+            Snackbar.Add("Note content is required", Severity.Error);
+            return;
+        }
+
+        _isSubmitting = true;
+        StateHasChanged();
+
+        try
+        {
+            // Return the request model to the caller
+            MudDialog.Close(DialogResult.Ok(_model));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"An error occurred: {ex.Message}", Severity.Error);
+            _isSubmitting = false;
+        }
+    }
+
+    /// <summary>
+    /// Cancels the dialog
+    /// </summary>
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+}

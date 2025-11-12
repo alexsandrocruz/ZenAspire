@@ -1,0 +1,456 @@
+@page "/contacts/index"
+
+@inject NavigationManager NavigationManager
+@inject HttpClient HttpClient
+@using CleanAspire.ClientApp.Pages.Contacts.Components
+@using CleanAspire.ClientApp.Services.Contacts
+@using CleanAspire.ClientApp.Shared
+
+@inject ContactServiceProxy ContactServiceProxy
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>@L["Contacts"]</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <!-- Header -->
+    <MudPaper Class="pa-4 mb-4">
+        <MudStack Row Spacing="0" Justify="Justify.SpaceBetween">
+            <MudStack Row AlignItems="AlignItems.Start">
+                <MudIcon Icon="@Icons.Material.Outlined.People" Size="Size.Large" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.subtitle2">@L["Contact Management"]</MudText>
+                    @if (_associatedClient != null)
+                    {
+                        <MudText Typo="Typo.body2">
+                            @L["Contacts for:"] @(_associatedClient.DisplayName)
+                            <MudButton Size="Size.Small"
+                                          Variant="Variant.Text"
+                                          OnClick="ClearClientFilter"
+                                          Class="ml-2">
+                                <MudIcon Icon="@Icons.Material.Filled.Clear" />
+                                @L["Clear Filter"]
+                            </MudButton>
+                        </MudText>
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2">@L["Manage contacts and their relationships with clients"]</MudText>
+                    }
+                </MudStack>
+            </MudStack>
+            <MudStack Row Spacing="1">
+                <MudButton Size="Size.Small" OnClick="RefreshData" Disabled="@_loading">
+                    <MudIcon Icon="@Icons.Material.Filled.Refresh" />
+                    <MudText>@L["Refresh"]</MudText>
+                </MudButton>
+                <MudButton Size="Size.Small" OnClick="OpenNewContactDialog">
+                    <MudIcon Icon="@Icons.Material.Filled.Add" />
+                    <MudText>@L["New Contact"]</MudText>
+                </MudButton>
+            </MudStack>
+        </MudStack>
+    </MudPaper>
+
+    <!-- Search and Filters -->
+    <MudPaper Class="pa-4 mb-4">
+        <MudGrid Spacing="2">
+            <MudItem xs="12" md="6">
+                <MudTextField T="string"
+                              ValueChanged="@(s => OnSearch(s))"
+                              Value="@_searchTerm"
+                              Label="@L["Search contacts..."]"
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" />
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="int"
+                            @bind-Value="_filterType"
+                            Label="@L["Filter by Type"]"
+                            Clearable="true"
+                            OnValueChanged="OnFilterChanged">
+                    <MudSelectItem Value="0">@L["All Types"]</MudSelectItem>
+                    <MudSelectItem Value="1">@L["Lead"]</MudSelectItem>
+                    <MudSelectItem Value="2">@L["Prospect"]</MudSelectItem>
+                    <MudSelectItem Value="3">@L["Client"]</MudSelectItem>
+                    <MudSelectItem Value="4">@L["Partner"]</MudSelectItem>
+                    <MudSelectItem Value="5">@L["Vendor"]</MudSelectItem>
+                    <MudSelectItem Value="6">@L["Employee"]</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="3">
+                <MudSelect T="int"
+                            @bind-Value="_filterStatus"
+                            Label="@L["Filter by Status"]"
+                            Clearable="true"
+                            OnValueChanged="OnFilterChanged">
+                    <MudSelectItem Value="0">@L["All Statuses"]</MudSelectItem>
+                    <MudSelectItem Value="1">@L["Active"]</MudSelectItem>
+                    <MudSelectItem Value="2">@L["Inactive"]</MudSelectItem>
+                    <MudSelectItem Value="3">@L["Qualified"]</MudSelectItem>
+                    <MudSelectItem Value="4">@L["Unqualified"]</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+        </MudGrid>
+    </MudPaper>
+
+    <!-- View Mode Toggle -->
+    <MudPaper Class="pa-4 mb-4">
+        <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
+            <MudText Typo="Typo.body2">@L["View Mode:"]</MudText>
+            <MudRadioGroup @bind-Value="_viewMode" Row="true">
+                <MudRadio T="int" Item="0" Label="@L["All Contacts"]" />
+                <MudRadio T="int" Item="1" Label="@L["Client-Associated"]" />
+                <MudRadio T="int" Item="2" Label="@L["Standalone"]" />
+            </MudRadioGroup>
+        </MudStack>
+    </MudPaper>
+
+    <!-- Data Grid -->
+    <MudPaper Class="pa-4">
+        @if (_loading)
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-8">
+                <MudProgressCircular Indeterminate="true" />
+                <MudText Typo="Typo.body2">@L["Loading contacts..."]</MudText>
+            </MudStack>
+        }
+        else if (!_contacts.Any())
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-8">
+                <MudIcon Icon="@Icons.Material.Outlined.PersonSearch" Size="Size.Large" />
+                <MudText Typo="Typo.h6">@L["No contacts found"]</MudText>
+                <MudText Typo="Typo.body2">@L["Create your first contact to get started"]</MudText>
+                <MudButton Variant="Variant.Outlined" OnClick="OpenNewContactDialog">
+                    <MudIcon Icon="@Icons.Material.Filled.Add" Class="mr-2" />
+                    @L["Create First Contact"]
+                </MudButton>
+            </MudStack>
+        }
+        else
+        {
+            <MudDataGrid T="ContactDto"
+                          Dense="true"
+                          Hover="true"
+                          Items="@_contacts"
+                          @bind-SelectedItem="_selectedContact"
+                          RowClick="@(e => EditContact(e.Item))">
+                <Columns>
+                    <PropertyColumn Title="@L["Name"]" Property="c => c.FullName" />
+                    <PropertyColumn Title="@L["Email"]" Property="c => c.Email" />
+                    <PropertyColumn Title="@L["Phone"]" Property="c => c.Phone" />
+                    <PropertyColumn Title="@L["Mobile Phone"]" Property="c => c.MobilePhone" />
+                    <PropertyColumn Title="@L["Job Title"]" Property="c => c.JobTitle" />
+                    <PropertyColumn Title="@L["Type"]" Property="c => c.TypeName">
+                        <CellTemplate>
+                            <MudChip Size="Size.Small"
+                                      Color="@GetContactTypeColor(context.Item.Type)">
+                                @context.Item.TypeName
+                            </MudChip>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Title="@L["Status"]" Property="c => c.StatusName">
+                        <CellTemplate>
+                            <MudChip Size="Size.Small"
+                                      Color="@GetStatusColor(context.Item.Status)">
+                                @context.Item.StatusName
+                            </MudChip>
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <PropertyColumn Title="@L["Client"]" Property="c => c.ClientDisplayName">
+                        <CellTemplate>
+                            @if (!string.IsNullOrEmpty(context.Item.ClientDisplayName))
+                            {
+                                <MudChip Size="Size.Small" Color="Color.Primary">
+                                    <MudIcon Icon="@Icons.Material.Filled.Business" Class="mr-1" />
+                                    @context.Item.ClientDisplayName
+                                </MudChip>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Default">-</MudText>
+                            }
+                        </CellTemplate>
+                    </PropertyColumn>
+                    <TemplateColumn>
+                        <HeaderTemplate>@L["Role"]</HeaderTemplate>
+                        <CellTemplate>
+                            <MudStack Spacing="1">
+                                @if (context.Item.IsMainContact)
+                                {
+                                    <MudChip Size="Size.Small" Color="Color.Info">@L["Main"]</MudChip>
+                                }
+                                @if (context.Item.IsDecisionMaker)
+                                {
+                                    <MudChip Size="Size.Small" Color="Color.Warning">@L["Decision"]</MudChip>
+                                }
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+                    <TemplateColumn>
+                        <HeaderTemplate>@L["Actions"]</HeaderTemplate>
+                        <CellTemplate>
+                            <MudStack Row Spacing="1">
+                                <MudIconButton Size="Size.Small"
+                                              Color="Color.Primary"
+                                              Icon="@Icons.Material.Filled.Edit"
+                                              Title="@L["Edit"]"
+                                              OnClick="() => EditContact(context.Item)" />
+                                <MudIconButton Size="Size.Small"
+                                              Color="Color.Error"
+                                              Icon="@Icons.Material.Filled.Delete"
+                                              Title="@L["Delete"]"
+                                              OnClick="() => DeleteContact(context.Item)" />
+                            </MudStack>
+                        </CellTemplate>
+                    </TemplateColumn>
+                </Columns>
+            </MudDataGrid>
+        }
+    </MudPaper>
+</MudContainer>
+
+@code {
+    [Parameter]
+    [SupplyParameterFromQuery(Name = "clientId")]
+    public string? ClientId { get; set; }
+
+    private bool _loading = false;
+    private string _searchTerm = string.Empty;
+    private int _filterType = 0;
+    private int _filterStatus = 0;
+    private int _viewMode = 0; // 0: all, 1: client-associated, 2: standalone
+    private ContactDto? _selectedContact;
+    private List<ContactDto> _contacts = new();
+    private ClientDto? _associatedClient;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadContacts();
+        await LoadAssociatedClient();
+    }
+
+    private async Task LoadContacts()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            PaginatedResult<ContactDto>? result;
+
+            if (!string.IsNullOrEmpty(ClientId))
+            {
+                // Load contacts for specific client
+                result = await ContactServiceProxy.GetContactsWithPaginationAsync(1, 1000, clientId: ClientId);
+            }
+            else
+            {
+                // Load all contacts
+                result = await ContactServiceProxy.GetContactsWithPaginationAsync(1, 1000);
+            }
+
+            _contacts = result?.Items?.ToList() ?? new List<ContactDto>();
+
+            ApplyFilters();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(@L["Error loading contacts: {0}", ex.Message], Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAssociatedClient()
+    {
+        if (!string.IsNullOrEmpty(ClientId))
+        {
+            try
+            {
+                var clientService = new ClientServiceProxy(HttpClient);
+                _associatedClient = await clientService.GetClientByIdAsync(ClientId);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add(@L["Error loading client information: {0}", ex.Message], Severity.Error);
+            }
+        }
+    }
+
+    private void ApplyFilters()
+    {
+        var filtered = _contacts;
+
+        // Search filter
+        if (!string.IsNullOrEmpty(_searchTerm))
+        {
+            filtered = filtered.Where(c =>
+                c.FirstName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                c.LastName.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                c.Email?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
+                c.Phone?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
+                c.MobilePhone?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) == true ||
+                c.JobTitle?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) == true
+            ).ToList();
+        }
+
+        // Type filter
+        if (_filterType > 0)
+        {
+            filtered = filtered.Where(c => c.Type == _filterType).ToList();
+        }
+
+        // Status filter
+        if (_filterStatus > 0)
+        {
+            filtered = filtered.Where(c => c.Status == _filterStatus).ToList();
+        }
+
+        // View mode filter
+        if (_viewMode == 1)
+        {
+            // Client-associated contacts
+            filtered = filtered.Where(c => !string.IsNullOrEmpty(c.ClientId)).ToList();
+        }
+        else if (_viewMode == 2)
+        {
+            // Standalone contacts
+            filtered = filtered.Where(c => string.IsNullOrEmpty(c.ClientId)).ToList();
+        }
+
+        _contacts = filtered.ToList();
+    }
+
+    private async Task OnFilterChanged()
+    {
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private async Task OnSearch(string text)
+    {
+        _searchTerm = text;
+        ApplyFilters();
+        StateHasChanged();
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadContacts();
+        Snackbar.Add(@L["Data refreshed"], Severity.Success);
+    }
+
+    private void ClearClientFilter()
+    {
+        ClientId = null;
+        _associatedClient = null;
+        Navigation.NavigateTo("/contacts/index");
+        LoadContacts();
+    }
+
+    private async Task OpenNewContactDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            ["IsEdit"] = false
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Large,
+                    };
+
+        var dialog = DialogService.Show<NewContactDialog>(@L["New Contact"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadContacts();
+        }
+    }
+
+    private async Task EditContact(ContactDto contact)
+    {
+        var parameters = new DialogParameters
+        {
+            ["IsEdit"] = true,
+            ["Contact"] = contact
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Large,
+                    };
+
+        var dialog = DialogService.Show<NewContactDialog>(@L["Edit Contact"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadContacts();
+        }
+    }
+
+    private async Task DeleteContact(ContactDto contact)
+    {
+        var parameters = new DialogParameters
+        {
+            ["Message"] = string.Format(@L["Are you sure you want to delete the contact '{0}'? This action cannot be undone."], contact.FullName)
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+                    };
+
+        var dialog = DialogService.Show<DeleteConfirmationDialog>(@L["Delete Contact"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var success = await ContactServiceProxy.DeleteContactAsync(contact.Id);
+            if (success)
+            {
+                Snackbar.Add(@L["Contact deleted successfully"], Severity.Success);
+                await LoadContacts();
+            }
+            else
+            {
+                Snackbar.Add(@L["Failed to delete contact"], Severity.Error);
+            }
+        }
+    }
+
+    private Color GetContactTypeColor(int type)
+    {
+        return type switch
+        {
+            1 => Color.Warning,    // Lead
+            2 => Color.Info,       // Prospect
+            3 => Color.Success,    // Client
+            4 => Color.Primary,    // Partner
+            5 => Color.Secondary,  // Vendor
+            6 => Color.Default,    // Employee
+            _ => Color.Default
+        };
+    }
+
+    private Color GetStatusColor(int status)
+    {
+        return status switch
+        {
+            1 => Color.Success,    // Active
+            2 => Color.Default,    // Inactive
+            3 => Color.Info,       // Qualified
+            4 => Color.Warning,    // Unqualified
+            _ => Color.Default
+        };
+    }
+}

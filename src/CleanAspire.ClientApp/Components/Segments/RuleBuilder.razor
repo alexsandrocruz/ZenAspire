@@ -1,0 +1,401 @@
+@using CleanAspire.ClientApp.Models.Segments
+@using MudBlazor
+
+<MudPaper Elevation="1" Class="pa-4">
+    <MudStack Spacing="3">
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Rule" Class="mr-2" />
+            Segment Rules
+        </MudText>
+        <MudText Typo="Typo.body2" Color="Color.Surface">
+            Build rules to define segment membership
+        </MudText>
+
+        <!-- Rule Group Selection -->
+        <MudStack Direction="Direction.Horizontal" Spacing="2">
+            <MudSelect @bind-Value="_ruleGroupType" Label="Rule Logic" Variant="Variant.Outlined">
+                <MudSelectItem Value="@("all")">All conditions must be met (AND)</MudSelectItem>
+                <MudSelectItem Value="@("any")">Any condition must be met (OR)</MudSelectItem>
+                <MudSelectItem Value="@("not")">None of the conditions must be met (NOT)</MudSelectItem>
+            </MudSelect>
+
+            <MudButton StartIcon="@Icons.Material.Filled.Add"
+                       Variant="Variant.Outlined"
+                       @onclick="AddCondition"
+                       Disabled="@(_selectedField == null || _selectedOperator == null)">
+                Add Condition
+            </MudButton>
+
+            <MudButton StartIcon="@Icons.Material.Filled.Delete"
+                       Variant="Variant.Outlined"
+                       Color="Color.Error"
+                       @onclick="ClearRules"
+                       Disabled="@(!_conditions.Any())">
+                Clear All
+            </MudButton>
+        </MudStack>
+
+        <!-- Condition Builder -->
+        <MudGrid>
+            <MudItem xs="12" md="3">
+                <MudSelect @bind-Value="_selectedField"
+                          T="FieldDefinitionDto"
+                          Label="Field"
+                          Variant="Variant.Outlined"
+                          Disabled="@_loadingFields">
+                    @if (_loadingFields)
+                    {
+                        <MudSelectItem T="string" Disabled="@true">
+                            <MudStack Direction="Direction.Horizontal" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudProgressCircular Indeterminate="@true" Size="Size.Small" />
+                                <MudText>Loading...</MudText>
+                            </MudStack>
+                        </MudSelectItem>
+                    }
+                    else
+                    {
+                        @foreach (var entityType in _availableFields?.FieldsByEntityType ?? new Dictionary<string, List<FieldDefinitionDto>>())
+                        {
+                            <MudSelectItem T="string" Value="@null" Disabled="@true">
+                                <MudText Typo="Typo.subtitle2">@entityType.Key</MudText>
+                            </MudSelectItem>
+                            @foreach (var field in entityType.Value)
+                            {
+                                <MudSelectItem T="FieldDefinitionDto" Value="@field">
+                                    @field.DisplayName (@field.Type)
+                                </MudSelectItem>
+                            }
+                        }
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" md="3">
+                <MudSelect @bind-Value="_selectedOperator"
+                          T="OperatorDefinitionDto"
+                          Label="Operator"
+                          Variant="Variant.Outlined"
+                          Disabled="@(_selectedField == null || _loadingFields)">
+                    @if (_selectedField != null)
+                    {
+                        var compatibleOperators = _availableFields?.SupportedOperators
+                            .Where(op => op.SupportedTypes.Contains(_selectedField.Type))
+                            .ToList() ?? new List<OperatorDefinitionDto>();
+
+                        @foreach (var category in GetOperatorCategories(compatibleOperators))
+                        {
+                            <MudSelectItem T="string" Value="@null" Disabled="@true">
+                                <MudText Typo="Typo.subtitle2">@category</MudText>
+                            </MudSelectItem>
+                            @foreach (var op in compatibleOperators.Where(o => GetOperatorCategory(o) == category))
+                            {
+                                <MudSelectItem T="OperatorDefinitionDto" Value="@op">@op.DisplayName</MudSelectItem>
+                            }
+                        }
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" md="4">
+                @if (_selectedOperator != null)
+                {
+                    if (_selectedOperator.RequiresArrayValue)
+                    {
+                        <MudTextField @bind-Value="_arrayValueInput"
+                                      T="string"
+                                      Label="Values (comma-separated)"
+                                      Variant="Variant.Outlined"
+                                      HelperText="Enter values separated by commas"
+                                      Lines="2" />
+                    }
+                    else
+                    {
+                        <MudTextField @bind-Value="_valueInput"
+                                      T="string"
+                                      Label="Value"
+                                      Variant="Variant.Outlined"
+                                      HelperText="@_selectedField?.Description" />
+                    }
+                }
+                else
+                {
+                    <MudTextField T="string" Label="Value" Variant="Variant.Outlined" Disabled="@true" />
+                }
+            </MudItem>
+
+            <MudItem xs="12" md="2">
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.Add"
+                           @onclick="AddCondition"
+                           Disabled="@(_selectedField == null || _selectedOperator == null || string.IsNullOrEmpty(GetValueInput()))"
+                           Style="height: 56px;">
+                    Add
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Current Conditions -->
+        @if (_conditions.Any())
+        {
+            <MudDivider />
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6">Current Conditions</MudText>
+                <MudPaper Class="pa-2" Style="background-color: var(--mud-palette-action-default-hover);">
+                    @for (int i = 0; i < _conditions.Count; i++)
+                    {
+                        var condition = _conditions[i];
+                        <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-2">
+                            <MudStack Direction="Direction.Horizontal" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+                                    @condition.Field
+                                </MudChip>
+                                <MudText>@GetOperatorDisplayName(condition.Operation)</MudText>
+                                <MudChip T="string" Size="Size.Small">@condition.Value</MudChip>
+                            </MudStack>
+                            <MudIconButton Size="Size.Small" Icon="@Icons.Material.Filled.Close"
+                                          Color="Color.Error"
+                                          @onclick="() => RemoveCondition(i)" />
+                        </MudStack>
+
+                        @if (i < _conditions.Count - 1)
+                        {
+                            <MudText Typo="Typo.body2" Color="Color.Primary" Class="ml-4">
+                                @(GetRuleGroupLogicDisplayName())
+                            </MudText>
+                        }
+                    }
+                </MudPaper>
+            </MudStack>
+        }
+
+        <!-- JSON Preview -->
+        <MudDivider />
+        <MudStack Spacing="2">
+            <MudText Typo="Typo.h6">JSON Preview</MudText>
+            <MudPaper Class="pa-2" Style="background-color: var(--mud-palette-surface);">
+                <MudText Typo="Typo.body2" Family="FontFamily.Monospace">
+                    <pre>@GetJsonPreview()</pre>
+                </MudText>
+            </MudPaper>
+        </MudStack>
+    </MudStack>
+</MudPaper>
+
+@code {
+    [Parameter]
+    public SegmentFieldsResponseDto? AvailableFields
+    {
+        get => _availableFields;
+        set
+        {
+            _availableFields = value;
+            if (value != null)
+            {
+                _loadingFields = false;
+            }
+        }
+    }
+
+    [Parameter]
+    public string DefinitionJson
+    {
+        get => GetRuleJson();
+        set => LoadFromDefinitionJson(value);
+    }
+
+    [Parameter]
+    public EventCallback<string> DefinitionJsonChanged { get; set; }
+
+    private SegmentFieldsResponseDto? _availableFields;
+    private bool _loadingFields = true;
+    private string _ruleGroupType = "all";
+    private FieldDefinitionDto? _selectedField;
+    private OperatorDefinitionDto? _selectedOperator;
+    private string _valueInput = string.Empty;
+    private string _arrayValueInput = string.Empty;
+    private List<SegmentCondition> _conditions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAvailableFields();
+    }
+
+    private async Task LoadAvailableFields()
+    {
+        _loadingFields = true;
+        // The parent component should provide AvailableFields
+        // This method can be used to fetch fields if needed
+        await Task.CompletedTask;
+    }
+
+    private void AddCondition()
+    {
+        if (_selectedField == null || _selectedOperator == null || string.IsNullOrEmpty(GetValueInput()))
+            return;
+
+        var condition = new SegmentCondition
+        {
+            Field = _selectedField.Name,
+            Operation = _selectedOperator.Name,
+            Value = ParseValue()
+        };
+
+        _conditions.Add(condition);
+
+        // Reset inputs
+        _valueInput = string.Empty;
+        _arrayValueInput = string.Empty;
+        _selectedField = null;
+        _selectedOperator = null;
+
+        NotifyDefinitionChanged();
+    }
+
+    private void RemoveCondition(int index)
+    {
+        _conditions.RemoveAt(index);
+        NotifyDefinitionChanged();
+    }
+
+    private void ClearRules()
+    {
+        _conditions.Clear();
+        NotifyDefinitionChanged();
+    }
+
+    private object? ParseValue()
+    {
+        if (_selectedOperator?.RequiresArrayValue == true)
+        {
+            return _arrayValueInput.Split(',')
+                .Select(v => v.Trim())
+                .Where(v => !string.IsNullOrEmpty(v))
+                .ToList();
+        }
+
+        // Try to parse as the field type
+        if (_selectedField?.Type == "Int32" && int.TryParse(_valueInput, out var intValue))
+            return intValue;
+
+        if (_selectedField?.Type == "Boolean" && bool.TryParse(_valueInput, out var boolValue))
+            return boolValue;
+
+        if (_selectedField?.Type == "Double" && double.TryParse(_valueInput, out var doubleValue))
+            return doubleValue;
+
+        if (_selectedField?.Type == "DateTime" && DateTime.TryParse(_valueInput, out var dateValue))
+            return dateValue;
+
+        return _valueInput;
+    }
+
+    private string GetValueInput()
+    {
+        return _selectedOperator?.RequiresArrayValue == true ? _arrayValueInput : _valueInput;
+    }
+
+    private string GetRuleJson()
+    {
+        if (!_conditions.Any()) return string.Empty;
+
+        var ruleGroup = new SegmentRuleGroup();
+
+        switch (_ruleGroupType)
+        {
+            case "all":
+                ruleGroup.All = _conditions.Cast<SegmentRuleBase>().ToList();
+                break;
+            case "any":
+                ruleGroup.Any = _conditions.Cast<SegmentRuleBase>().ToList();
+                break;
+            case "not":
+                ruleGroup.Not = _conditions.Cast<SegmentRuleBase>().ToList();
+                break;
+        }
+
+        return System.Text.Json.JsonSerializer.Serialize(ruleGroup, new System.Text.Json.JsonSerializerOptions
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase,
+            WriteIndented = true
+        });
+    }
+
+    private void LoadFromDefinitionJson(string json)
+    {
+        if (string.IsNullOrEmpty(json)) return;
+
+        try
+        {
+            var ruleGroup = System.Text.Json.JsonSerializer.Deserialize<SegmentRuleGroup>(json);
+            if (ruleGroup?.All?.Any() == true)
+            {
+                _ruleGroupType = "all";
+                _conditions = ruleGroup.All.OfType<SegmentCondition>().ToList();
+            }
+            else if (ruleGroup?.Any?.Any() == true)
+            {
+                _ruleGroupType = "any";
+                _conditions = ruleGroup.Any.OfType<SegmentCondition>().ToList();
+            }
+            else if (ruleGroup?.Not?.Any() == true)
+            {
+                _ruleGroupType = "not";
+                _conditions = ruleGroup.Not.OfType<SegmentCondition>().ToList();
+            }
+        }
+        catch
+        {
+            // Invalid JSON, ignore
+        }
+    }
+
+    private string GetJsonPreview()
+    {
+        var json = GetRuleJson();
+        return string.IsNullOrEmpty(json) ? "No rules defined yet" : json;
+    }
+
+    private string GetRuleGroupLogicDisplayName()
+    {
+        return _ruleGroupType switch
+        {
+            "all" => "AND",
+            "any" => "OR",
+            "not" => "AND NOT",
+            _ => "AND"
+        };
+    }
+
+    private string GetOperatorDisplayName(string operation)
+    {
+        return _availableFields?.SupportedOperators
+            .FirstOrDefault(op => op.Name == operation)?.DisplayName ?? operation;
+    }
+
+    private string GetOperatorCategory(OperatorDefinitionDto op)
+    {
+        if (new[] { "eq", "ne" }.Contains(op.Name)) return "Comparison";
+        if (new[] { "gt", "gte", "lt", "lte" }.Contains(op.Name)) return "Numeric/Date";
+        if (new[] { "contains", "startswith", "endswith", "notcontains" }.Contains(op.Name)) return "String";
+        if (new[] { "in", "notin" }.Contains(op.Name)) return "List";
+        if (new[] { "between", "notbetween" }.Contains(op.Name)) return "Range";
+        if (new[] { "isnull", "isnotnull", "isempty", "isnotempty" }.Contains(op.Name)) return "Null/Empty";
+        if (new[] { "regex", "notregex" }.Contains(op.Name)) return "Regex";
+        if (new[] { "today", "yesterday", "thisweek", "thismonth", "thisyear", "lastndays", "lastnmonths" }.Contains(op.Name)) return "Date";
+        return "Other";
+    }
+
+    private List<string> GetOperatorCategories(List<OperatorDefinitionDto> operators)
+    {
+        return operators.Select(GetOperatorCategory).Distinct().OrderBy(c => c).ToList();
+    }
+
+    private async void NotifyDefinitionChanged()
+    {
+        if (DefinitionJsonChanged.HasDelegate)
+        {
+            await DefinitionJsonChanged.InvokeAsync(GetRuleJson());
+        }
+    }
+}

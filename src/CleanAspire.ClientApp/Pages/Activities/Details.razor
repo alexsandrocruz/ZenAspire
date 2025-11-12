@@ -1,0 +1,376 @@
+@page "/activities/details/{ActivityId}"
+@using CleanAspire.ClientApp.Shared.Dialogs
+@using CleanAspire.ClientApp.Services.Activities
+@using CleanAspire.ClientApp.Shared
+@using CleanAspire.ClientApp.Shared.Components
+@using CleanAspire.ClientApp.DTOs
+
+@inject ActivityServiceProxy ActivityServiceProxy
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>@(_activity?.Subject ?? "Activity Details")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    @if (_loading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+            <MudProgressCircular Indeterminate="true" />
+            <MudText Typo="Typo.body2">@L["Loading activity details..."]</MudText>
+        </MudStack>
+    }
+    else if (_error != null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            @L["Error loading activity: {0}", _error]
+        </MudAlert>
+        <MudButton OnClick="GoBack" Variant="Variant.Outlined">
+            <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Class="mr-2" />
+            @L["Back to Activities"]
+        </MudButton>
+    }
+    else if (_activity != null)
+    {
+        <!-- Header -->
+        <MudPaper Class="pa-4 mb-4">
+            <MudStack Row Spacing="2" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                                   OnClick="GoBack"
+                                   Size="Size.Medium"
+                                   Title="@L["Back to Activities"]" />
+                    <MudIcon Icon="@GetActivityIcon(_activity.Type)" Size="Size.Large" />
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.h5">@_activity.Subject</MudText>
+                        <MudStack Row Spacing="2">
+                            <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(_activity.Status)">
+                                @_activity.Status.ToString()
+                            </MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(_activity.Priority)">
+                                @_activity.Priority.ToString()
+                            </MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="Color.Default">
+                                @GetActivityTypeName(_activity.Type)
+                            </MudChip>
+                        </MudStack>
+                    </MudStack>
+                </MudStack>
+                <MudStack Row Spacing="1">
+                    <MudButton Size="Size.Small" OnClick="EditActivity" Color="Color.Primary">
+                        <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-1" />
+                        @L["Edit"]
+                    </MudButton>
+                    @if (_activity.Status != ActivityStatus.Completed)
+                    {
+                        <MudButton Size="Size.Small" OnClick="CompleteActivity" Color="Color.Success">
+                            <MudIcon Icon="@Icons.Material.Filled.Check" Class="mr-1" />
+                            @L["Complete"]
+                        </MudButton>
+                    }
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        <!-- Tabs -->
+        <MudPaper>
+            <MudTabs Elevation="0" @bind-ActiveTab="_activeTab">
+                <!-- Details Tab -->
+                <MudTabPanel Text="@L["Details"]" Icon="@Icons.Material.Filled.Info">
+                    <MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+                        <MudGrid Spacing="3">
+                            <!-- Basic Information -->
+                            <MudItem xs="12" md="6">
+                                <MudPaper Class="pa-3" Elevation="1">
+                                    <MudText Typo="Typo.subtitle1" Class="mb-3">@L["Basic Information"]</MudText>
+                                    <MudStack Spacing="2">
+                                        <MudStack Row Spacing="2">
+                                            <MudText Typo="Typo.body2" Color="Color.Default">@L["Type:"]</MudText>
+                                            <MudText Typo="Typo.body2">@GetActivityTypeName(_activity.Type)</MudText>
+                                        </MudStack>
+                                        <MudStack Row Spacing="2">
+                                            <MudText Typo="Typo.body2" Color="Color.Default">@L["Status:"]</MudText>
+                                            <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(_activity.Status)">
+                                                @_activity.Status.ToString()
+                                            </MudChip>
+                                        </MudStack>
+                                        <MudStack Row Spacing="2">
+                                            <MudText Typo="Typo.body2" Color="Color.Default">@L["Priority:"]</MudText>
+                                            <MudChip T="string" Size="Size.Small" Color="@GetPriorityColor(_activity.Priority)">
+                                                @_activity.Priority.ToString()
+                                            </MudChip>
+                                        </MudStack>
+                                        @if (!string.IsNullOrEmpty(_activity.Location))
+                                        {
+                                            <MudStack Row Spacing="2">
+                                                <MudText Typo="Typo.body2" Color="Color.Default">@L["Location:"]</MudText>
+                                                <MudText Typo="Typo.body2">@_activity.Location</MudText>
+                                            </MudStack>
+                                        }
+                                        @if (_activity.DurationMinutes.HasValue)
+                                        {
+                                            <MudStack Row Spacing="2">
+                                                <MudText Typo="Typo.body2" Color="Color.Default">@L["Duration:"]</MudText>
+                                                <MudText Typo="Typo.body2">@_activity.DurationMinutes.Value minutes</MudText>
+                                            </MudStack>
+                                        }
+                                    </MudStack>
+                                </MudPaper>
+                            </MudItem>
+
+                            <!-- Schedule Information -->
+                            <MudItem xs="12" md="6">
+                                <MudPaper Class="pa-3" Elevation="1">
+                                    <MudText Typo="Typo.subtitle1" Class="mb-3">@L["Schedule"]</MudText>
+                                    <MudStack Spacing="2">
+                                        <MudStack Row Spacing="2">
+                                            <MudText Typo="Typo.body2" Color="Color.Default">@L["Start:"]</MudText>
+                                            <MudText Typo="Typo.body2">@_activity.Start.ToString("f")</MudText>
+                                        </MudStack>
+                                        @if (_activity.Due.HasValue)
+                                        {
+                                            <MudStack Row Spacing="2">
+                                                <MudText Typo="Typo.body2" Color="Color.Default">@L["Due:"]</MudText>
+                                                <MudText Typo="Typo.body2">@_activity.Due.Value.ToString("f")</MudText>
+                                            </MudStack>
+                                        }
+                                        @if (_activity.ReminderAt.HasValue)
+                                        {
+                                            <MudStack Row Spacing="2">
+                                                <MudText Typo="Typo.body2" Color="Color.Default">@L["Reminder:"]</MudText>
+                                                <MudText Typo="Typo.body2">@_activity.ReminderAt.Value.ToString("f")</MudText>
+                                            </MudStack>
+                                        }
+                                        @if (_activity.IsOverdue && _activity.Status != ActivityStatus.Completed)
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="Color.Error">
+                                                <MudIcon Icon="@Icons.Material.Filled.Warning" Size="Size.Small" Class="mr-1" />
+                                                Overdue
+                                            </MudChip>
+                                        }
+                                    </MudStack>
+                                </MudPaper>
+                            </MudItem>
+
+                            <!-- Description -->
+                            @if (!string.IsNullOrEmpty(_activity.Description))
+                            {
+                                <MudItem xs="12">
+                                    <MudPaper Class="pa-3" Elevation="1">
+                                        <MudText Typo="Typo.subtitle1" Class="mb-3">@L["Description"]</MudText>
+                                        <MudText Typo="Typo.body2">@_activity.Description</MudText>
+                                    </MudPaper>
+                                </MudItem>
+                            }
+
+                            <!-- Assignment -->
+                            @if (!string.IsNullOrEmpty(_activity.AssignedToUserId) || !string.IsNullOrEmpty(_activity.AssignedToUserName))
+                            {
+                                <MudItem xs="12" md="6">
+                                    <MudPaper Class="pa-3" Elevation="1">
+                                        <MudText Typo="Typo.subtitle1" Class="mb-3">@L["Assignment"]</MudText>
+                                        <MudStack Spacing="2">
+                                            @if (!string.IsNullOrEmpty(_activity.AssignedToUserName))
+                                            {
+                                                <MudStack Row Spacing="2">
+                                                    <MudText Typo="Typo.body2" Color="Color.Default">@L["Assigned To:"]</MudText>
+                                                    <MudChip T="string" Size="Size.Small" Color="Color.Default">
+                                                        <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" Class="mr-1" />
+                                                        @_activity.AssignedToUserName
+                                                    </MudChip>
+                                                </MudStack>
+                                            }
+                                            @if (!string.IsNullOrEmpty(_activity.AssignedToUserId))
+                                            {
+                                                <MudStack Row Spacing="2">
+                                                    <MudText Typo="Typo.body2" Color="Color.Default">@L["User ID:"]</MudText>
+                                                    <MudText Typo="Typo.body2">@_activity.AssignedToUserId</MudText>
+                                                </MudStack>
+                                            }
+                                        </MudStack>
+                                    </MudPaper>
+                                </MudItem>
+                            }
+
+                            <!-- Regarding -->
+                            @if (_activity.RegardingType.HasValue && _activity.RegardingId.HasValue)
+                            {
+                                <MudItem xs="12" md="6">
+                                    <MudPaper Class="pa-3" Elevation="1">
+                                        <MudText Typo="Typo.subtitle1" Class="mb-3">@L["Related To"]</MudText>
+                                        <MudStack Spacing="2">
+                                            <MudStack Row Spacing="2">
+                                                <MudText Typo="Typo.body2" Color="Color.Default">@L["Type:"]</MudText>
+                                                <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+                                                    @_activity.RegardingType.Value.ToString()
+                                                </MudChip>
+                                            </MudStack>
+                                            <MudStack Row Spacing="2">
+                                                <MudText Typo="Typo.body2" Color="Color.Default">@L["ID:"]</MudText>
+                                                <MudText Typo="Typo.body2">@_activity.RegardingId.Value</MudText>
+                                            </MudStack>
+                                        </MudStack>
+                                    </MudPaper>
+                                </MudItem>
+                            }
+                        </MudGrid>
+                    </MudContainer>
+                </MudTabPanel>
+
+                <!-- Notes Tab -->
+                <MudTabPanel Text="@L["Notes"]" Icon="@Icons.Material.Filled.StickyNote2">
+                    <NotesPanel OwnerType="OwnerType.Activity"
+                                OwnerId="@_activityGuid"
+                                Title="@L["Activity Notes"]" />
+                </MudTabPanel>
+            </MudTabs>
+        </MudPaper>
+    }
+</MudContainer>
+
+@code {
+    [Parameter] public string ActivityId { get; set; } = string.Empty;
+
+    private ActivityDto? _activity;
+    private bool _loading = true;
+    private string? _error;
+    private int _activeTab = 0;
+    private Guid _activityGuid;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Guid.TryParse(ActivityId, out _activityGuid))
+        {
+            _error = @L["Invalid activity ID"];
+            _loading = false;
+            return;
+        }
+        await LoadActivity();
+    }
+
+    private async Task LoadActivity()
+    {
+        _loading = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            _activity = await ActivityServiceProxy.GetActivityByIdAsync(_activityGuid);
+            if (_activity == null)
+            {
+                _error = @L["Activity not found"];
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/activities/index");
+    }
+
+    private async Task EditActivity()
+    {
+        if (_activity == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["IsEdit"] = true,
+            ["Activity"] = _activity
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Large,
+            FullWidth = true
+        };
+
+        var dialog = DialogService.Show<ActivityDialog>(@L["Edit Activity"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadActivity();
+            Snackbar.Add(@L["Activity updated successfully"], Severity.Success);
+        }
+    }
+
+    private async Task CompleteActivity()
+    {
+        if (_activity == null) return;
+
+        var success = await ActivityServiceProxy.CompleteActivityAsync(_activity.Id);
+        if (success)
+        {
+            Snackbar.Add(@L["Activity completed successfully"], Severity.Success);
+            await LoadActivity();
+        }
+        else
+        {
+            Snackbar.Add(@L["Failed to complete activity"], Severity.Error);
+        }
+    }
+
+    private string GetActivityIcon(ActivityType type)
+    {
+        return type switch
+        {
+            ActivityType.Task => Icons.Material.Filled.Task,
+            ActivityType.PhoneCall => Icons.Material.Filled.Phone,
+            ActivityType.Meeting => Icons.Material.Filled.Groups,
+            ActivityType.FollowUp => Icons.Material.Filled.Flag,
+            ActivityType.Email => Icons.Material.Filled.Email,
+            ActivityType.WhatsAppMessage => Icons.Material.Filled.Chat,
+            ActivityType.VideoCall => Icons.Material.Filled.VideoCall,
+            ActivityType.SMS => Icons.Material.Filled.Sms,
+            _ => Icons.Material.Filled.Assignment
+        };
+    }
+
+    private string GetActivityTypeName(ActivityType type)
+    {
+        return type switch
+        {
+            ActivityType.PhoneCall => "Phone Call",
+            ActivityType.WhatsAppMessage => "WhatsApp",
+            ActivityType.VideoCall => "Video Call",
+            ActivityType.FollowUp => "Follow Up",
+            _ => type.ToString()
+        };
+    }
+
+    private Color GetStatusColor(ActivityStatus status)
+    {
+        return status switch
+        {
+            ActivityStatus.Open => Color.Default,
+            ActivityStatus.InProgress => Color.Primary,
+            ActivityStatus.Completed => Color.Success,
+            ActivityStatus.Canceled => Color.Default,
+            ActivityStatus.Deferred => Color.Warning,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetPriorityColor(ActivityPriority priority)
+    {
+        return priority switch
+        {
+            ActivityPriority.Low => Color.Default,
+            ActivityPriority.Normal => Color.Info,
+            ActivityPriority.High => Color.Warning,
+            ActivityPriority.Urgent => Color.Error,
+            _ => Color.Default
+        };
+    }
+}

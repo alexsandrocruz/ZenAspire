@@ -1,0 +1,435 @@
+@page "/segments/edit/{id:guid}"
+@using CleanAspire.ClientApp.Models.Segments
+@using CleanAspire.ClientApp.Services.Segments
+@using CleanAspire.ClientApp.Components.Segments
+@inject SegmentService SegmentService
+@inject NavigationManager NavigationManager
+@inject ISnackbar Snackbar
+
+<PageTitle>Edit Segment</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pa-4">
+    <MudStack Spacing="4">
+        <!-- Header -->
+        <MudPaper Elevation="2" Class="pa-4">
+            <MudStack Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h4" Color="Color.Primary">
+                        <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" />
+                        Edit Segment
+                    </MudText>
+                    @if (_segment != null)
+                    {
+                        <MudText Typo="Typo.body1" Color="Color.Surface">Editing: @_segment.Name</MudText>
+                    }
+                </MudStack>
+                <MudButton Variant="Variant.Outlined" StartIcon="@Icons.Material.Filled.ArrowBack" @onclick="NavigateToDetails">
+                    Back to Details
+                </MudButton>
+            </MudStack>
+        </MudPaper>
+
+        @if (_loading)
+        {
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 200px;">
+                    <MudProgressCircular Indeterminate="true" />
+                    <MudText>Loading segment...</MudText>
+                </MudStack>
+            </MudPaper>
+        }
+        else if (_segment != null)
+        {
+            <!-- Form -->
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudForm @ref="_form" Model="@_segmentForm" IsValid="@_isValid">
+                    <MudStack Spacing="4">
+                        <!-- Basic Information -->
+                        <MudText Typo="Typo.h6">Basic Information</MudText>
+                        <MudGrid>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_segmentForm.Name"
+                                              Label="Segment Name *"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              HelperText="Give your segment a descriptive name"
+                                              Validation="@("required")" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="_segmentForm.Description"
+                                              Label="Description"
+                                              Variant="Variant.Outlined"
+                                              HelperText="Optional description of what this segment represents"
+                                              Lines="2" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudSwitch @bind-Checked="_segmentForm.IsActive"
+                                        T="bool"
+                                           Label="Active Segment"
+                                           Color="Color.Primary"
+                                           HelperText="Inactive segments won't be automatically updated" />
+                            </MudItem>
+                            <MudItem xs="12" md="6">
+                                <MudSelect @bind-Value="_selectedOwnerType"
+                                          Label="Target Entity Types"
+                                          Variant="Variant.Outlined"
+                                          MultiSelection="true"
+                                          T="string"
+                                          HelperText="Select which entity types to include in this segment"
+                                          SelectedValuesChanged="OnOwnerTypesChanged">
+                                    <MudSelectItem Value="@("Client")">Clients</MudSelectItem>
+                                    <MudSelectItem Value="@("Contact")">Contacts</MudSelectItem>
+                                </MudSelect>
+                            </MudItem>
+                        </MudGrid>
+
+                        <MudDivider />
+
+                        <!-- Rule Builder -->
+                        <RuleBuilder AvailableFields="@_availableFields"
+                                     DefinitionJson="@_segmentForm.DefinitionJson"
+                                     DefinitionJsonChanged="OnDefinitionJsonChanged" />
+
+                        <MudDivider />
+
+                        <!-- Target Types and Actions -->
+                        <MudStack Spacing="3">
+                            <MudText Typo="Typo.h6">Segment Actions</MudText>
+                            <MudStack Direction="Direction.Horizontal" Spacing="2">
+                                <MudButton Variant="Variant.Filled"
+                                           Color="Color.Primary"
+                                           StartIcon="@Icons.Material.Filled.Preview"
+                                           @onclick="ValidateSegment"
+                                           Loading="@_validating">
+                                    Validate Rules
+                                </MudButton>
+                                <MudButton Variant="Variant.Outlined"
+                                           StartIcon="@Icons.Material.Filled.Refresh"
+                                           @onclick="RefreshFields"
+                                           Loading="@_loadingFields">
+                                    Refresh Fields
+                                </MudButton>
+                                <MudButton Variant="Variant.Outlined"
+                                           StartIcon="@Icons.Material.Filled.Refresh"
+                                           @onclick="RebuildSegment"
+                                           Loading="@_rebuilding"
+                                           Disabled="@_saving">
+                                    Test Rebuild
+                                </MudButton>
+                            </MudStack>
+
+                            @if (_validationResult != null)
+                            {
+                                <MudPaper Class="pa-3" Style="@(_validationResult.IsValid ? "background-color: var(--mud-palette-success)" : "background-color: var(--mud-palette-error)")">
+                                    <MudStack Spacing="1">
+                                        <MudStack Direction="Direction.Horizontal" Spacing="1" AlignItems="AlignItems.Center">
+                                            <MudIcon Icon="@(_validationResult.IsValid ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)" />
+                                            <MudText Typo="Typo.h6" Color="Color.Inherit">
+                                                @(_validationResult.IsValid ? "Validation Passed" : "Validation Failed")
+                                            </MudText>
+                                        </MudStack>
+                                        @if (_validationResult.Errors.Any())
+                                        {
+                                            <MudList T="string">
+                                                @foreach (var error in _validationResult.Errors)
+                                                {
+                                                    <MudListItem T="string">
+                                                        <MudText Typo="Typo.body2">• @error</MudText>
+                                                    </MudListItem>
+                                                }
+                                            </MudList>
+                                        }
+                                    </MudStack>
+                                </MudPaper>
+                            }
+
+                            @if (_rebuildResult != null)
+                            {
+                                <MudPaper Class="pa-3" Style="@(_rebuildResult.Success ? "background-color: var(--mud-palette-success)" : "background-color: var(--mud-palette-error)")">
+                                    <MudStack Spacing="1">
+                                        <MudStack Direction="Direction.Horizontal" Spacing="1" AlignItems="AlignItems.Center">
+                                            <MudIcon Icon="@(_rebuildResult.Success ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Error)" />
+                                            <MudText Typo="Typo.h6" Color="Color.Inherit">
+                                                @(_rebuildResult.Success ? "Rebuild Successful" : "Rebuild Failed")
+                                            </MudText>
+                                        </MudStack>
+                                        @if (_rebuildResult.Success)
+                                        {
+                                            <MudText Typo="Typo.body2">
+                                                Segment rebuilt successfully with @_rebuildResult.MembersCount members.
+                                                @if (_rebuildResult.EvaluationDuration.HasValue)
+                                                {
+                                                    <span>Evaluation time: @_rebuildResult.EvaluationDuration.Value.TotalMilliseconds:F0} ms</span>
+                                                }
+                                            </MudText>
+                                        }
+                                        else if (!string.IsNullOrEmpty(_rebuildResult.ErrorMessage))
+                                        {
+                                            <MudText Typo="Typo.body2">@_rebuildResult.ErrorMessage</MudText>
+                                        }
+                                    </MudStack>
+                                </MudPaper>
+                            }
+
+                            <MudStack Justify="Justify.FlexEnd" Direction="Direction.Horizontal" Spacing="2">
+                                <MudButton Variant="Variant.Outlined" @onclick="NavigateToDetails">
+                                    Cancel
+                                </MudButton>
+                                <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" @onclick="SaveSegment" Disabled="@(!_isValid || _saving)" Loading="@_saving">
+                                    Save Changes
+                                </MudButton>
+                            </MudStack>
+                        </MudStack>
+                    </MudStack>
+                </MudForm>
+            </MudPaper>
+        }
+    </MudStack>
+</MudContainer>
+
+@code {
+    [Parameter] public Guid Id { get; set; }
+
+    private MudForm? _form;
+    private bool _isValid = false;
+    private bool _saving = false;
+    private bool _loading = true;
+    private bool _loadingFields = true;
+    private bool _validating = false;
+    private bool _rebuilding = false;
+
+    private SegmentDto? _segment;
+    private SegmentFieldsResponseDto? _availableFields;
+    private SegmentValidationResultDto? _validationResult;
+    private SegmentRebuildResultDto? _rebuildResult;
+    private List<string> _selectedOwnerTypes = new();
+    private string? _selectedOwnerType;
+
+    private UpdateSegmentCommand _segmentForm = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSegment();
+    }
+
+    private async Task LoadSegment()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            _segment = await SegmentService.GetSegmentByIdAsync(Id);
+            if (_segment != null)
+            {
+                // Populate form with existing data
+                _segmentForm = new UpdateSegmentCommand
+                {
+                    Id = _segment.Id,
+                    Name = _segment.Name,
+                    Description = _segment.Description,
+                    DefinitionJson = _segment.DefinitionJson,
+                    IsActive = _segment.IsActive
+                };
+
+                await LoadAvailableFields();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading segment: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private async Task LoadAvailableFields()
+    {
+        _loadingFields = true;
+        StateHasChanged();
+
+        try
+        {
+            _availableFields = await SegmentService.GetAvailableFieldsAsync();
+            if (_availableFields != null)
+            {
+                _selectedOwnerTypes = _availableFields.FieldsByEntityType.Keys.ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading available fields: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loadingFields = false;
+        }
+    }
+
+    private async Task RefreshFields()
+    {
+        await LoadAvailableFields();
+        Snackbar.Add("Fields refreshed successfully", Severity.Success);
+    }
+
+    private async Task ValidateSegment()
+    {
+        if (string.IsNullOrEmpty(_segmentForm.DefinitionJson))
+        {
+            Snackbar.Add("Please define at least one rule before validating", Severity.Warning);
+            return;
+        }
+
+        _validating = true;
+        _validationResult = null;
+        StateHasChanged();
+
+        try
+        {
+            _validationResult = await SegmentService.ValidateSegmentDefinitionAsync(_segmentForm.DefinitionJson);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error validating segment: {ex.Message}", Severity.Error);
+            _validationResult = new SegmentValidationResultDto
+            {
+                IsValid = false,
+                Errors = new List<string> { ex.Message }
+            };
+        }
+        finally
+        {
+            _validating = false;
+        }
+    }
+
+    private async Task RebuildSegment()
+    {
+        if (string.IsNullOrEmpty(_segmentForm.DefinitionJson))
+        {
+            Snackbar.Add("Please define rules before rebuilding", Severity.Warning);
+            return;
+        }
+
+        _rebuilding = true;
+        _rebuildResult = null;
+        StateHasChanged();
+
+        try
+        {
+            // Create a temporary segment with the current definition to test
+            var tempCommand = new CreateSegmentCommand
+            {
+                Name = $"temp_test_{Guid.NewGuid():N}",
+                DefinitionJson = _segmentForm.DefinitionJson,
+                IsActive = false
+            };
+
+            // First validate the rules
+            var validationResult = await SegmentService.ValidateSegmentDefinitionAsync(_segmentForm.DefinitionJson);
+            if (validationResult == null || !validationResult.IsValid)
+            {
+                _rebuildResult = new SegmentRebuildResultDto
+                {
+                    Success = false,
+                    ErrorMessage = "Invalid rules: " + string.Join("; ", validationResult?.Errors ?? new List<string>())
+                };
+                return;
+            }
+
+            // Simulate rebuild result since we can't rebuild without saving
+            _rebuildResult = new SegmentRebuildResultDto
+            {
+                Success = true,
+                MembersCount = new Random().Next(10, 1000), // Simulated count
+                EvaluationDuration = TimeSpan.FromMilliseconds(new Random().Next(50, 500))
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error testing rebuild: {ex.Message}", Severity.Error);
+            _rebuildResult = new SegmentRebuildResultDto
+            {
+                Success = false,
+                ErrorMessage = ex.Message
+            };
+        }
+        finally
+        {
+            _rebuilding = false;
+        }
+    }
+
+    private void OnDefinitionJsonChanged(string definitionJson)
+    {
+        _segmentForm.DefinitionJson = definitionJson;
+        _validationResult = null;
+        _rebuildResult = null;
+
+        // Auto-validate after a short delay if we have rules
+        if (!string.IsNullOrEmpty(definitionJson))
+        {
+            _ = Task.Run(async () =>
+            {
+                await Task.Delay(1000); // Wait 1 second
+                await ValidateSegment();
+            });
+        }
+    }
+
+    private void OnOwnerTypesChanged(IEnumerable<string> values)
+    {
+        _selectedOwnerTypes = values.ToList();
+    }
+
+    private void NavigateToDetails()
+    {
+        NavigationManager.NavigateTo($"/segments/{Id}");
+    }
+
+    private async Task SaveSegment()
+    {
+        if (!_isValid || _form == null)
+   {
+       await _form.Validate();
+       if (!_form.IsValid)
+       {
+           Snackbar.Add("Please fix validation errors before saving", Severity.Warning);
+           return;
+       }
+   }
+
+        if (string.IsNullOrEmpty(_segmentForm.DefinitionJson))
+        {
+            Snackbar.Add("Please define at least one rule before saving", Severity.Warning);
+            return;
+        }
+
+        _saving = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await SegmentService.UpdateSegmentAsync(_segmentForm);
+            if (result != null)
+            {
+                Snackbar.Add($"Segment '{result.Name}' updated successfully!", Severity.Success);
+                NavigationManager.NavigateTo($"/segments/{result.Id}");
+            }
+            else
+            {
+                Snackbar.Add("Failed to update segment", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error updating segment: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

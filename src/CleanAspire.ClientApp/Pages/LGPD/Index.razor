@@ -1,0 +1,355 @@
+@page "/lgpd"
+@layout ApplicationLayout
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+<PageTitle>LGPD Dashboard</PageTitle>
+
+<style>
+    .stat-card {
+        transition: all 0.3s ease;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+    .consent-purpose-chip {
+        margin: 2px;
+    }
+    .recent-consent {
+        border-left: 4px solid;
+    }
+    .consent-active {
+        border-left-color: #4caf50;
+    }
+    .consent-expired {
+        border-left-color: #ff9800;
+    }
+    .consent-withdrawn {
+        border-left-color: #f44336;
+    }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <MudGrid Container="true" Spacing="4">
+        <!-- Header -->
+        <MudItem xs="12">
+            <MudPaper Elevation="0" Class="pa-4">
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h4" Class="mb-2">
+                        <MudIcon Icon="@Icons.Material.Filled.Security" Class="mr-2" />
+                        LGPD Compliance Dashboard
+                    </MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary">
+                        Manage user consents, data exports, and privacy requests in compliance with LGPD regulations.
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Statistics Cards -->
+        <MudItem xs="12" md="3">
+            <MudPaper Elevation="1" Class="stat-card pa-4">
+                <MudStack Spacing="1" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Large" />
+                    <MudText Typo="Typo.h3" Color="Color.Success">@totalActiveConsents</MudText>
+                    <MudText Typo="Typo.body1" Align="Align.Center">Active Consents</MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="3">
+            <MudPaper Elevation="1" Class="stat-card pa-4">
+                <MudStack Spacing="1" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Color="Color.Warning" Size="Size.Large" />
+                    <MudText Typo="Typo.h3" Color="Color.Warning">@expiredConsents</MudText>
+                    <MudText Typo="Typo.body1" Align="Align.Center">Expired Consents</MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="3">
+            <MudPaper Elevation="1" Class="stat-card pa-4">
+                <MudStack Spacing="1" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.Cancel" Color="Color.Error" Size="Size.Large" />
+                    <MudText Typo="Typo.h3" Color="Color.Error">@withdrawnConsents</MudText>
+                    <MudText Typo="Typo.body1" Align="Align.Center">Withdrawn Consents</MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" md="3">
+            <MudPaper Elevation="1" Class="stat-card pa-4">
+                <MudStack Spacing="1" AlignItems="AlignItems.Center">
+                    <MudIcon Icon="@Icons.Material.Filled.PieChart" Color="Color.Primary" Size="Size.Large" />
+                    <MudText Typo="Typo.h3" Color="Color.Primary">@Math.Round(complianceRate, 1)%</MudText>
+                    <MudText Typo="Typo.body1" Align="Align.Center">Compliance Rate</MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Quick Actions -->
+        <MudItem xs="12">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-3">Quick Actions</MudText>
+                <MudStack Spacing="2">
+                    <MudButton Variant="Variant.Filled"
+                              StartIcon="@Icons.Material.Filled.Add"
+                              Color="Color.Primary"
+                              Size="Size.Large"
+                              OnClick="@(() => Navigation.NavigateTo("/lgpd/consents/new"))">
+                        Record New Consent
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                              StartIcon="@Icons.Material.Filled.Download"
+                              Color="Color.Secondary"
+                              OnClick="@(() => Navigation.NavigateTo("/lgpd/export"))">
+                        Export Personal Data
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                              StartIcon="@Icons.Material.Filled.Delete"
+                              Color="Color.Tertiary"
+                              OnClick="@(() => Navigation.NavigateTo("/lgpd/erasure"))">
+                        Request Data Deletion
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Consent Overview by Purpose -->
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-3">Consents by Purpose</MudText>
+                <MudStack Spacing="2">
+                    @foreach (var purpose in consentByPurpose)
+                    {
+                        <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudChip T="string" Color="@GetPurposeColor(purpose.Purpose)" Variant="Variant.Outlined"
+                                    Text="@purpose.PurposeName" />
+                            <MudStack Direction="Direction.Horizontal" Spacing="1">
+                                <MudText Typo="Typo.body2">@purpose.Active active</MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">/ @purpose.Total total</MudText>
+                            </MudStack>
+                        </MudStack>
+                        <MudLinearProgress Value="@GetPurposeProgress(purpose)"
+                                           Color="@GetPurposeColor(purpose.Purpose)"
+                                           Class="my-1" />
+                    }
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Recent Consents -->
+        <MudItem xs="12" md="6">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudStack Spacing="2">
+                    <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudText Typo="Typo.h6">Recent Consents</MudText>
+                        <MudButton Variant="Variant.Text"
+                                      Size="Size.Small"
+                                      OnClick="@(() => Navigation.NavigateTo("/lgpd/consents"))">
+                            View All
+                        </MudButton>
+                    </MudStack>
+
+                    @if (recentConsents.Any())
+                    {
+                        <MudList T="RecentConsent" Dense="true">
+                            @foreach (var consent in recentConsents.Take(5))
+                            {
+                                <MudListItem T="RecentConsent" Class="@(GetConsentStatusClass(consent))" Value="@consent">
+                                    <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="w-100">
+                                        <MudStack Spacing="1">
+                                            <MudText Typo="Typo.body1">@consent.OwnerName</MudText>
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                @consent.PurposeName • @consent.Channel
+                                            </MudText>
+                                        </MudStack>
+                                        <MudChip T="string" Size="Size.Small"
+                                                Color="@GetConsentChipColor(consent)"
+                                                Variant="Variant.Outlined"
+                                                Text="@consent.StatusDescription" />
+                                    </MudStack>
+                                </MudListItem>
+                            }
+                        </MudList>
+                    }
+                    else
+                    {
+                        <MudAlert Severity="Severity.Info" Class="my-2">
+                            No consents recorded yet. Start by recording your first consent.
+                        </MudAlert>
+                    }
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <!-- Compliance Status -->
+        <MudItem xs="12">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudText Typo="Typo.h6" Class="mb-3">Compliance Status</MudText>
+                <MudStack Spacing="3">
+                    <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.body1">Consent Recording</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Explicit consent collection system</MudText>
+                        </MudStack>
+                        <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Text="Active" />
+                    </MudStack>
+
+                    <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.body1">Data Export</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">JSON/CSV export functionality</MudText>
+                        </MudStack>
+                        <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Text="Active" />
+                    </MudStack>
+
+                    <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.body1">Data Erasure</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Right to be forgotten requests</MudText>
+                        </MudStack>
+                        <MudChip T="string" Color="Color.Success" Variant="Variant.Filled" Text="Active" />
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+@code {
+    private int totalActiveConsents = 0;
+    private int expiredConsents = 0;
+    private int withdrawnConsents = 0;
+    private double complianceRate = 0;
+
+    private List<ConsentPurposeStats> consentByPurpose = new();
+    private List<RecentConsent> recentConsents = new();
+
+    // Helper classes for dashboard data
+    public class ConsentPurposeStats
+    {
+        public int Purpose { get; set; }
+        public string PurposeName { get; set; } = string.Empty;
+        public int Active { get; set; }
+        public int Total { get; set; }
+    }
+
+    public class RecentConsent
+    {
+        public string OwnerName { get; set; } = string.Empty;
+        public string PurposeName { get; set; } = string.Empty;
+        public string Channel { get; set; } = string.Empty;
+        public string StatusDescription { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
+        public bool IsExpired { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDashboardData();
+    }
+
+    private async Task LoadDashboardData()
+    {
+        try
+        {
+            // Mock data for demonstration - replace with actual API calls
+            totalActiveConsents = 156;
+            expiredConsents = 23;
+            withdrawnConsents = 12;
+            complianceRate = 82.5;
+
+            consentByPurpose = new List<ConsentPurposeStats>
+            {
+                new() { Purpose = 1, PurposeName = "Marketing", Active = 45, Total = 62 },
+                new() { Purpose = 2, PurposeName = "Contractual", Active = 78, Total = 78 },
+                new() { Purpose = 3, PurposeName = "Support", Active = 28, Total = 35 },
+                new() { Purpose = 4, PurposeName = "Legal", Active = 5, Total = 16 }
+            };
+
+            recentConsents = new List<RecentConsent>
+            {
+                new()
+                {
+                    OwnerName = "João Silva",
+                    PurposeName = "Marketing",
+                    Channel = "Web Form",
+                    StatusDescription = "Active",
+                    IsActive = true,
+                    IsExpired = false
+                },
+                new()
+                {
+                    OwnerName = "Maria Santos",
+                    PurposeName = "Contractual",
+                    Channel = "Email",
+                    StatusDescription = "Active",
+                    IsActive = true,
+                    IsExpired = false
+                },
+                new()
+                {
+                    OwnerName = "Carlos Oliveira",
+                    PurposeName = "Support",
+                    Channel = "Phone",
+                    StatusDescription = "Expired",
+                    IsActive = false,
+                    IsExpired = true
+                },
+                new()
+                {
+                    OwnerName = "Ana Costa",
+                    PurposeName = "Marketing",
+                    Channel = "SMS",
+                    StatusDescription = "Withdrawn",
+                    IsActive = false,
+                    IsExpired = false
+                },
+                new()
+                {
+                    OwnerName = "Pedro Martins",
+                    PurposeName = "Legal",
+                    Channel = "In Person",
+                    StatusDescription = "Active",
+                    IsActive = true,
+                    IsExpired = false
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+        }
+    }
+
+    private Color GetPurposeColor(int purpose)
+    {
+        return purpose switch
+        {
+            1 => Color.Primary,   // Marketing
+            2 => Color.Success,   // Contractual
+            3 => Color.Info,      // Support
+            4 => Color.Warning,   // Legal
+            _ => Color.Default
+        };
+    }
+
+    private double GetPurposeProgress(ConsentPurposeStats purpose)
+    {
+        return purpose.Total > 0 ? (double)purpose.Active / purpose.Total * 100 : 0;
+    }
+
+    private string GetConsentStatusClass(RecentConsent consent)
+    {
+        return consent.IsActive ? "consent-active" :
+               consent.IsExpired ? "consent-expired" : "consent-withdrawn";
+    }
+
+    private Color GetConsentChipColor(RecentConsent consent)
+    {
+        return consent.IsActive ? Color.Success :
+               consent.IsExpired ? Color.Warning : Color.Error;
+    }
+}

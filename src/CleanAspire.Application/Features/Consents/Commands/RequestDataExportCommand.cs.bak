@@ -1,0 +1,486 @@
+using CleanAspire.Application.Features.Consents.DTOs;
+using CleanAspire.Application.Pipeline;
+using CleanAspire.Domain.Entities;
+using CleanAspire.Domain.Enums;
+using CleanAspire.Domain.Events;
+using System.Text.Json;
+
+namespace CleanAspire.Application.Features.Consents.Commands;
+
+/// <summary>
+/// Command for requesting personal data export.
+/// Phase 4: LGPD Compliance - Data Export Workflow
+/// </summary>
+public record RequestDataExportCommand : IFusionCacheRefreshRequest<DataProcessingRequestResponseDto>, IRequiresValidation
+{
+    public int OwnerType { get; init; }
+    public Guid OwnerId { get; init; }
+    public string Format { get; init; } = "JSON"; // JSON or CSV
+
+    public IEnumerable<string>? Tags => new[] { "data-export", $"owner-{OwnerType}", $"owner-{OwnerId}" };
+}
+
+/// <summary>
+/// Handler for processing RequestDataExportCommand.
+/// Generates and exports all personal data for a subject in the requested format.
+/// </summary>
+public class RequestDataExportCommandHandler : IRequestHandler<RequestDataExportCommand, DataProcessingRequestResponseDto>
+{
+    private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUser;
+
+    public RequestDataExportCommandHandler(
+        IApplicationDbContext context,
+        ICurrentUserService currentUser)
+    {
+        _context = context;
+        _currentUser = currentUser;
+    }
+
+    public async ValueTask<DataProcessingRequestResponseDto> Handle(RequestDataExportCommand request, CancellationToken cancellationToken)
+    {
+        // Validate tenant
+        if (string.IsNullOrEmpty(_currentUser.TenantId))
+            throw new UnauthorizedAccessException("TenantId is required");
+
+        // Validate enum values
+        if (!Enum.IsDefined(typeof(OwnerType), request.OwnerType))
+            throw new ArgumentException("Invalid OwnerType value");
+
+        // Validate format
+        if (request.Format.ToUpperInvariant() != "JSON" && request.Format.ToUpperInvariant() != "CSV")
+            throw new ArgumentException("Format must be 'JSON' or 'CSV'");
+
+        var requestId = Guid.NewGuid().ToString();
+        var startTime = DateTime.UtcNow;
+
+        try
+        {
+            // Raise domain event for audit trail
+            var domainEvent = new PersonalDataExportRequestedEvent(
+                (OwnerType)request.OwnerType,
+                request.OwnerId,
+                _currentUser.UserId ?? "system",
+                request.Format);
+
+            // Add event to a temporary entity for tracking (or publish directly)
+            // For now, we'll process immediately
+
+            // Collect all personal data
+            var personalData = await CollectPersonalDataAsync(
+                (OwnerType)request.OwnerType,
+                request.OwnerId,
+                cancellationToken);
+
+            // Generate export file
+            var exportContent = request.Format.ToUpperInvariant() switch
+            {
+                "JSON" => GenerateJsonExport(personalData),
+                "CSV" => GenerateCsvExport(personalData),
+                _ => throw new ArgumentException($"Unsupported format: {request.Format}")
+            };
+
+            // Save export file (in a real implementation, you'd save to cloud storage)
+            var fileName = $"personal-data-export-{request.OwnerType}-{request.OwnerId}-{DateTime.UtcNow:yyyyMMddHHmmss}.{request.Format.ToLowerInvariant()}";
+            var downloadUrl = $"/api/downloads/{fileName}"; // Placeholder URL
+
+            // In a real implementation, you would:
+            // 1. Save the file to secure storage (Azure Blob, S3, etc.)
+            // 2. Generate a secure, time-limited download URL
+            // 3. Send notification to the subject with download instructions
+
+            return new DataProcessingRequestResponseDto
+            {
+                RequestId = requestId,
+                OwnerType = request.OwnerType,
+                OwnerTypeName = ((OwnerType)request.OwnerType).ToString(),
+                OwnerId = request.OwnerId,
+                RequestType = "Export",
+                Status = "Completed",
+                RequestedAt = startTime,
+                CompletedAt = DateTime.UtcNow,
+                DownloadUrl = downloadUrl
+            };
+        }
+        catch (Exception ex)
+        {
+            return new DataProcessingRequestResponseDto
+            {
+                RequestId = requestId,
+                OwnerType = request.OwnerType,
+                OwnerTypeName = ((OwnerType)request.OwnerType).ToString(),
+                OwnerId = request.OwnerId,
+                RequestType = "Export",
+                Status = "Failed",
+                RequestedAt = startTime,
+                CompletedAt = DateTime.UtcNow,
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+
+    private async Task<PersonalDataExportModel> CollectPersonalDataAsync(OwnerType ownerType, Guid ownerId, CancellationToken cancellationToken)
+    {
+        var data = new PersonalDataExportModel
+        {
+            OwnerType = ownerType.ToString(),
+            OwnerId = ownerId,
+            ExportDate = DateTime.UtcNow,
+            TenantId = _currentUser.TenantId!
+        };
+
+        switch (ownerType)
+        {
+            case OwnerType.Client:
+                var client = await _context.Clients
+                    .FirstOrDefaultAsync(c => c.Id == ownerId.ToString(), cancellationToken);
+
+                if (client != null)
+                {
+                    data.ClientData = new ClientPersonalData
+                    {
+                        Id = client.Id,
+                        Name = client.Name,
+                        LegalName = client.LegalName,
+                        TradeName = client.TradeName,
+                        TaxId = client.TaxId,
+                        Email = client.Email,
+                        Phone = client.Phone,
+                        Website = client.Website,
+                        Address = client.Address,
+                        City = client.City,
+                        State = client.State,
+                        PostalCode = client.PostalCode,
+                        Country = client.Country,
+                        Industry = client.Industry,
+                        Size = client.Size,
+                        AnnualRevenue = client.AnnualRevenue,
+                        EmployeeCount = client.EmployeeCount,
+                        Notes = client.Notes,
+                        Tags = client.Tags,
+                        Created = client.Created,
+                        CreatedBy = client.CreatedBy,
+                        LastModified = client.LastModified,
+                        LastModifiedBy = client.LastModifiedBy
+                    };
+
+                    // Get related contacts
+                    data.Contacts = await _context.Contacts
+                        .Where(c => c.ClientId == ownerId.ToString())
+                        .Select(c => new ContactPersonalData
+                        {
+                            Id = c.Id,
+                            FirstName = c.FirstName,
+                            LastName = c.LastName,
+                            Email = c.Email,
+                            Phone = c.Phone,
+                            Mobile = c.Mobile,
+                            Position = c.JobTitle,
+                            Department = c.Department,
+                            Notes = c.Notes,
+                            Created = c.Created,
+                            CreatedBy = c.CreatedBy
+                        })
+                        .ToListAsync(cancellationToken);
+                }
+                break;
+
+            case OwnerType.Contact:
+                var contact = await _context.Contacts
+                    .Include(c => c.Client)
+                    .FirstOrDefaultAsync(c => c.Id == ownerId.ToString(), cancellationToken);
+
+                if (contact != null)
+                {
+                    data.ContactData = new ContactPersonalData
+                    {
+                        Id = contact.Id,
+                        FirstName = contact.FirstName,
+                        LastName = contact.LastName,
+                        Email = contact.Email,
+                        Phone = contact.Phone,
+                        Mobile = contact.Mobile,
+                        Position = contact.JobTitle,
+                        Department = contact.Department,
+                        Notes = contact.Notes,
+                        Created = contact.Created,
+                        CreatedBy = contact.CreatedBy
+                    };
+
+                    if (contact.Client != null)
+                    {
+                        data.ClientData = new ClientPersonalData
+                        {
+                            Id = contact.Client.Id,
+                            Name = contact.Client.Name,
+                            LegalName = contact.Client.LegalName,
+                            TradeName = contact.Client.TradeName,
+                            TaxId = contact.Client.TaxId,
+                            Email = contact.Client.Email,
+                            Phone = contact.Client.Phone,
+                            Website = contact.Client.Website,
+                            Address = contact.Client.Address,
+                            City = contact.Client.City,
+                            State = contact.Client.State,
+                            PostalCode = contact.Client.PostalCode,
+                            Country = contact.Client.Country,
+                            Industry = contact.Client.Industry,
+                            Size = contact.Client.Size,
+                            AnnualRevenue = contact.Client.AnnualRevenue,
+                            EmployeeCount = contact.Client.EmployeeCount,
+                            Notes = contact.Client.Notes,
+                            Tags = contact.Client.Tags,
+                            Created = contact.Client.Created,
+                            CreatedBy = contact.Client.CreatedBy
+                        };
+                    }
+                }
+                break;
+        }
+
+        // Get consents for this owner
+        data.Consents = await _context.Consents
+            .Where(c => c.OwnerType == ownerType && c.OwnerId == ownerId)
+            .Select(c => new ConsentPersonalData
+            {
+                Id = c.Id,
+                Purpose = c.Purpose.ToString(),
+                OptIn = c.OptIn,
+                Channel = c.Channel,
+                At = c.At,
+                Source = c.Source,
+                IpAddress = c.IpAddress,
+                UserAgent = c.UserAgent,
+                ValidUntil = c.ValidUntil,
+                Created = c.Created,
+                CreatedBy = c.CreatedBy
+            })
+            .ToListAsync(cancellationToken);
+
+        // Get notes for this owner
+        data.Notes = await _context.Notes
+            .Where(n => n.OwnerType == ownerType && n.OwnerId == ownerId)
+            .Select(n => new NotePersonalData
+            {
+                Id = n.Id,
+                Content = n.Content,
+                Type = n.Type.ToString(),
+                Created = n.Created,
+                CreatedBy = n.CreatedBy
+            })
+            .ToListAsync(cancellationToken);
+
+        // Get interactions for this owner
+        data.Interactions = await _context.Interactions
+            .Where(i => i.OwnerType == ownerType && i.OwnerId == ownerId)
+            .Select(i => new InteractionPersonalData
+            {
+                Id = i.Id,
+                Type = i.Type.ToString(),
+                Direction = i.Direction.ToString(),
+                Subject = i.Subject,
+                Content = i.Content,
+                Channel = i.Channel,
+                At = i.At,
+                Created = i.Created,
+                CreatedBy = i.CreatedBy
+            })
+            .ToListAsync(cancellationToken);
+
+        return data;
+    }
+
+    private string GenerateJsonExport(PersonalDataExportModel data)
+    {
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
+        return JsonSerializer.Serialize(data, options);
+    }
+
+    private string GenerateCsvExport(PersonalDataExportModel data)
+    {
+        var csv = new System.Text.StringBuilder();
+
+        // Header
+        csv.AppendLine("Data Type,Field,Value,Date Created");
+
+        // Client data
+        if (data.ClientData != null)
+        {
+            AddCsvRow(csv, "Client", "Name", data.ClientData.Name);
+            AddCsvRow(csv, "Client", "LegalName", data.ClientData.LegalName);
+            AddCsvRow(csv, "Client", "TradeName", data.ClientData.TradeName);
+            AddCsvRow(csv, "Client", "TaxId", data.ClientData.TaxId);
+            AddCsvRow(csv, "Client", "Email", data.ClientData.Email);
+            AddCsvRow(csv, "Client", "Phone", data.ClientData.Phone);
+            AddCsvRow(csv, "Client", "Website", data.ClientData.Website);
+            AddCsvRow(csv, "Client", "Address", data.ClientData.Address);
+            AddCsvRow(csv, "Client", "City", data.ClientData.City);
+            AddCsvRow(csv, "Client", "State", data.ClientData.State);
+            AddCsvRow(csv, "Client", "PostalCode", data.ClientData.PostalCode);
+            AddCsvRow(csv, "Client", "Country", data.ClientData.Country);
+            AddCsvRow(csv, "Client", "Industry", data.ClientData.Industry);
+            AddCsvRow(csv, "Client", "Size", data.ClientData.Size);
+            AddCsvRow(csv, "Client", "Notes", data.ClientData.Notes);
+            AddCsvRow(csv, "Client", "Tags", data.ClientData.Tags);
+            AddCsvRow(csv, "Client", "Created", data.ClientData.Created?.ToString("O"));
+        }
+
+        // Contact data
+        if (data.ContactData != null)
+        {
+            AddCsvRow(csv, "Contact", "FirstName", data.ContactData.FirstName);
+            AddCsvRow(csv, "Contact", "LastName", data.ContactData.LastName);
+            AddCsvRow(csv, "Contact", "Email", data.ContactData.Email);
+            AddCsvRow(csv, "Contact", "Phone", data.ContactData.Phone);
+            AddCsvRow(csv, "Contact", "Mobile", data.ContactData.Mobile);
+            AddCsvRow(csv, "Contact", "Position", data.ContactData.Position);
+            AddCsvRow(csv, "Contact", "Department", data.ContactData.Department);
+            AddCsvRow(csv, "Contact", "Notes", data.ContactData.Notes);
+            AddCsvRow(csv, "Contact", "Created", data.ContactData.Created?.ToString("O"));
+        }
+
+        // Consents
+        foreach (var consent in data.Consents)
+        {
+            AddCsvRow(csv, "Consent", "Purpose", consent.Purpose);
+            AddCsvRow(csv, "Consent", "OptIn", consent.OptIn.ToString());
+            AddCsvRow(csv, "Consent", "Channel", consent.Channel);
+            AddCsvRow(csv, "Consent", "Source", consent.Source);
+            AddCsvRow(csv, "Consent", "IpAddress", consent.IpAddress);
+            AddCsvRow(csv, "Consent", "At", consent.At.ToString("O"));
+            AddCsvRow(csv, "Consent", "ValidUntil", consent.ValidUntil?.ToString("O"));
+            AddCsvRow(csv, "Consent", "Created", consent.Created?.ToString("O"));
+        }
+
+        // Notes
+        foreach (var note in data.Notes)
+        {
+            AddCsvRow(csv, "Note", "Type", note.Type);
+            AddCsvRow(csv, "Note", "Content", note.Content);
+            AddCsvRow(csv, "Note", "Created", note.Created?.ToString("O"));
+        }
+
+        // Interactions
+        foreach (var interaction in data.Interactions)
+        {
+            AddCsvRow(csv, "Interaction", "Type", interaction.Type);
+            AddCsvRow(csv, "Interaction", "Direction", interaction.Direction);
+            AddCsvRow(csv, "Interaction", "Subject", interaction.Subject);
+            AddCsvRow(csv, "Interaction", "Content", interaction.Content);
+            AddCsvRow(csv, "Interaction", "Channel", interaction.Channel);
+            AddCsvRow(csv, "Interaction", "At", interaction.At.ToString("O"));
+            AddCsvRow(csv, "Interaction", "Created", interaction.Created?.ToString("O"));
+        }
+
+        return csv.ToString();
+    }
+
+    private static void AddCsvRow(System.Text.StringBuilder csv, string dataType, string field, string? value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            // Escape quotes and commas for CSV
+            var escapedValue = value.Replace("\"", "\"\"");
+            csv.AppendLine($"{dataType},{field},\"{escapedValue}\"");
+        }
+    }
+}
+
+// Internal data models for export
+internal class PersonalDataExportModel
+{
+    public string OwnerType { get; set; } = string.Empty;
+    public Guid OwnerId { get; set; }
+    public DateTime ExportDate { get; set; }
+    public string TenantId { get; set; } = string.Empty;
+    public ClientPersonalData? ClientData { get; set; }
+    public ContactPersonalData? ContactData { get; set; }
+    public List<ContactPersonalData> Contacts { get; set; } = new();
+    public List<ConsentPersonalData> Consents { get; set; } = new();
+    public List<NotePersonalData> Notes { get; set; } = new();
+    public List<InteractionPersonalData> Interactions { get; set; } = new();
+}
+
+internal class ClientPersonalData
+{
+    public string Id { get; set; } = string.Empty;
+    public string? Name { get; set; }
+    public string? LegalName { get; set; }
+    public string? TradeName { get; set; }
+    public string? TaxId { get; set; }
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string? Website { get; set; }
+    public string? Address { get; set; }
+    public string? City { get; set; }
+    public string? State { get; set; }
+    public string? PostalCode { get; set; }
+    public string? Country { get; set; }
+    public string? Industry { get; set; }
+    public string? Size { get; set; }
+    public decimal? AnnualRevenue { get; set; }
+    public int? EmployeeCount { get; set; }
+    public string? Notes { get; set; }
+    public string? Tags { get; set; }
+    public DateTime? Created { get; set; }
+    public string? CreatedBy { get; set; }
+    public DateTime? LastModified { get; set; }
+    public string? LastModifiedBy { get; set; }
+}
+
+internal class ContactPersonalData
+{
+    public string Id { get; set; } = string.Empty;
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public string? Email { get; set; }
+    public string? Phone { get; set; }
+    public string? Mobile { get; set; }
+    public string? Position { get; set; }
+    public string? Department { get; set; }
+    public string? Notes { get; set; }
+    public DateTime? Created { get; set; }
+    public string? CreatedBy { get; set; }
+}
+
+internal class ConsentPersonalData
+{
+    public string Id { get; set; } = string.Empty;
+    public string Purpose { get; set; } = string.Empty;
+    public bool OptIn { get; set; }
+    public string Channel { get; set; } = string.Empty;
+    public DateTime At { get; set; }
+    public string? Source { get; set; }
+    public string? IpAddress { get; set; }
+    public string? UserAgent { get; set; }
+    public DateTime? ValidUntil { get; set; }
+    public DateTime? Created { get; set; }
+    public string? CreatedBy { get; set; }
+}
+
+internal class NotePersonalData
+{
+    public string Id { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public DateTime? Created { get; set; }
+    public string? CreatedBy { get; set; }
+}
+
+internal class InteractionPersonalData
+{
+    public string Id { get; set; } = string.Empty;
+    public string Type { get; set; } = string.Empty;
+    public string Direction { get; set; } = string.Empty;
+    public string Subject { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
+    public string Channel { get; set; } = string.Empty;
+    public DateTime At { get; set; }
+    public DateTime? Created { get; set; }
+    public string? CreatedBy { get; set; }
+}

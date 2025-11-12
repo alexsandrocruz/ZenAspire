@@ -1,0 +1,528 @@
+@page "/lgpd/consents"
+@layout ApplicationLayout
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+<PageTitle>Consent Management</PageTitle>
+
+<style>
+    .consent-card {
+        transition: all 0.3s ease;
+    }
+    .consent-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+    .status-badge {
+        font-size: 0.75rem;
+    }
+    .filter-chip {
+        margin: 2px;
+    }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-4">
+    <!-- Header -->
+    <MudStack Spacing="3">
+        <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+            <MudStack Spacing="1">
+                <MudText Typo="Typo.h4">
+                    <MudIcon Icon="@Icons.Material.Filled.Security" Class="mr-2" />
+                    Consent Management
+                </MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary">
+                    Manage and monitor all user consents for LGPD compliance
+                </MudText>
+            </MudStack>
+            <MudButton Variant="Variant.Filled"
+                      StartIcon="@Icons.Material.Filled.Add"
+                      OnClick="@(() => Navigation.NavigateTo("/lgpd/consents/new"))">
+                Record Consent
+            </MudButton>
+        </MudStack>
+
+        <!-- Filters -->
+        <MudPaper Elevation="1" Class="pa-4">
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h6">Filters</MudText>
+                <MudStack Direction="Direction.Horizontal" Wrap="Wrap.Wrap" Spacing="1">
+                    <MudSelect T="int" Label="Owner Type" @bind-Value="selectedOwnerType" Variant="Variant.Outlined">
+                        <MudSelectItem T="int" Value="0">All Types</MudSelectItem>
+                        <MudSelectItem T="int" Value="1">Clients</MudSelectItem>
+                        <MudSelectItem T="int" Value="2">Contacts</MudSelectItem>
+                    </MudSelect>
+
+                    <MudSelect T="int" Label="Purpose" @bind-Value="selectedPurpose" Variant="Variant.Outlined">
+                        <MudSelectItem T="int" Value="0">All Purposes</MudSelectItem>
+                        <MudSelectItem T="int" Value="1">Marketing</MudSelectItem>
+                        <MudSelectItem T="int" Value="2">Contractual</MudSelectItem>
+                        <MudSelectItem T="int" Value="3">Support</MudSelectItem>
+                        <MudSelectItem T="int" Value="4">Legal</MudSelectItem>
+                    </MudSelect>
+
+                    <MudSelect T="int" Label="Status" @bind-Value="selectedStatus" Variant="Variant.Outlined">
+                        <MudSelectItem T="int" Value="0">All Status</MudSelectItem>
+                        <MudSelectItem T="int" Value="1">Active</MudSelectItem>
+                        <MudSelectItem T="int" Value="2">Expired</MudSelectItem>
+                        <MudSelectItem T="int" Value="3">Withdrawn</MudSelectItem>
+                    </MudSelect>
+
+                    <MudButton Variant="Variant.Outlined"
+                              StartIcon="@Icons.Material.Filled.Refresh"
+                              OnClick="@LoadConsents">
+                        Refresh
+                    </MudButton>
+                </MudStack>
+
+                <MudStack Direction="Direction.Horizontal" Wrap="Wrap.Wrap" Spacing="1">
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Showing @filteredConsents.Count() of @totalConsents consents
+                    </MudText>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        <!-- Consent List -->
+        @if (isLoading)
+        {
+            <MudPaper Elevation="1" Class="pa-8">
+                <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                    <MudLinearProgress Indeterminate="true" />
+                    <MudText>Loading consents...</MudText>
+                </MudStack>
+            </MudPaper>
+        }
+        else if (filteredConsents.Any())
+        {
+            <MudGrid Container="true" Spacing="3">
+                @foreach (var consent in filteredConsents)
+                {
+                    <MudItem xs="12">
+                        <MudCard Elevation="1" Class="consent-card pa-4">
+                            <MudStack Spacing="3">
+                                <!-- Header -->
+                                <MudStack Direction="Direction.Horizontal" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                    <MudStack Spacing="1">
+                                        <MudStack Direction="Direction.Horizontal" Spacing="1" AlignItems="AlignItems.Center">
+                                            <MudText Typo="Typo.h6">@consent.OwnerName</MudText>
+                                            <MudChip T="string" Size="Size.Small"
+                                                    Color="@GetOwnerTypeColor(consent.OwnerType)"
+                                                    Variant="Variant.Outlined"
+                                                    Text="@GetOwnerTypeName(consent.OwnerType)" />
+                                        </MudStack>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            ID: @consent.Id.Substring(0, 8)
+                                        </MudText>
+                                    </MudStack>
+                                    <MudStack Direction="Direction.Horizontal" Spacing="1">
+                                        <MudChip T="string" Size="Size.Small"
+                                                Color="@GetStatusChipColor(consent)"
+                                                Variant="Variant.Filled"
+                                                Text="@consent.StatusDescription" />
+                                        <MudIconButton Size="Size.Small"
+                                                     Icon="@Icons.Material.Filled.MoreVert"
+                                                     OnClick="@(() => OpenConsentMenu(consent))" />
+                                    </MudStack>
+                                </MudStack>
+
+                                <!-- Consent Details -->
+                                <MudGrid Container="true" Spacing="2">
+                                    <MudItem xs="12" md="6">
+                                        <MudStack Spacing="1">
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Purpose</MudText>
+                                            <MudChip T="string" Size="Size.Small"
+                                                    Color="@GetPurposeColor(consent.Purpose)"
+                                                    Variant="Variant.Outlined"
+                                                    Text="@consent.PurposeName" />
+                                        </MudStack>
+                                    </MudItem>
+
+                                    <MudItem xs="12" md="6">
+                                        <MudStack Spacing="1">
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Channel</MudText>
+                                            <MudText Typo="Typo.body1">@consent.Channel</MudText>
+                                        </MudStack>
+                                    </MudItem>
+
+                                    <MudItem xs="12" md="6">
+                                        <MudStack Spacing="1">
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Consent Date</MudText>
+                                            <MudText Typo="Typo.body1">@consent.At.ToString("MMM dd, yyyy")</MudText>
+                                        </MudStack>
+                                    </MudItem>
+
+                                    <MudItem xs="12" md="6">
+                                        <MudStack Spacing="1">
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">Valid Until</MudText>
+                                            <MudText Typo="Typo.body1">
+                                                @(consent.ValidUntil?.ToString("MMM dd, yyyy") ?? "Indefinite")
+                                            </MudText>
+                                        </MudStack>
+                                    </MudItem>
+
+                                    @if (!string.IsNullOrEmpty(consent.Source))
+                                    {
+                                        <MudItem xs="12">
+                                            <MudStack Spacing="1">
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary">Source</MudText>
+                                                <MudText Typo="Typo.body1">@consent.Source</MudText>
+                                            </MudStack>
+                                        </MudItem>
+                                    }
+
+                                    @if (!string.IsNullOrEmpty(consent.Notes))
+                                    {
+                                        <MudItem xs="12">
+                                            <MudStack Spacing="1">
+                                                <MudText Typo="Typo.body2" Color="Color.Secondary">Notes</MudText>
+                                                <MudText Typo="Typo.body1">@consent.Notes</MudText>
+                                            </MudStack>
+                                        </MudItem>
+                                    }
+
+                                    <MudItem xs="12">
+                                        <MudStack Direction="Direction.Horizontal" Spacing="1">
+                                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                                Last Modified: @consent.LastModified?.ToString("MMM dd, yyyy HH:mm")
+                                            </MudText>
+                                        </MudStack>
+                                    </MudItem>
+                                </MudGrid>
+
+                                <!-- Actions -->
+                                <MudStack Direction="Direction.Horizontal" Spacing="1">
+                                    <MudButton Size="Size.Small"
+                                              Variant="Variant.Outlined"
+                                              StartIcon="@Icons.Material.Filled.Edit"
+                                              OnClick="@(() => EditConsent(consent))">
+                                        Edit
+                                    </MudButton>
+                                    <MudButton Size="Size.Small"
+                                              Variant="Variant.Outlined"
+                                              StartIcon="@Icons.Material.Filled.Visibility"
+                                              OnClick="@(() => ViewConsentDetails(consent))">
+                                        Details
+                                    </MudButton>
+                                </MudStack>
+                            </MudStack>
+                        </MudCard>
+                    </MudItem>
+                }
+            </MudGrid>
+        }
+        else
+        {
+            <MudPaper Elevation="1" Class="pa-8">
+                <MudStack AlignItems="AlignItems.Center" Spacing="2">
+                    <MudIcon Icon="@Icons.Material.Filled.Search" Size="Size.Large" Color="Color.Secondary" />
+                    <MudText Typo="Typo.h6" Color="Color.Secondary">No consents found</MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Secondary" Align="Align.Center">
+                        Try adjusting your filters or record a new consent to get started.
+                    </MudText>
+                    <MudButton Variant="Variant.Filled"
+                              StartIcon="@Icons.Material.Filled.Add"
+                              OnClick="@(() => Navigation.NavigateTo("/lgpd/consents/new"))">
+                        Record First Consent
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+    </MudStack>
+</MudContainer>
+
+<!-- Consent Details Dialog -->
+<MudDialog @bind-IsOpen="@showConsentDetails" DisableSidePadding="true" MaxWidth="MaxWidth.Medium">
+    <TitleContent>
+        <MudText Typo="Typo.h6">Consent Details</MudText>
+    </TitleContent>
+    <DialogContent>
+        @if (selectedConsent != null)
+        {
+            <MudStack Spacing="3">
+                <MudGrid Container="true" Spacing="2">
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Consent ID</MudText>
+                        <MudText>@selectedConsent.Id</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Status</MudText>
+                        <MudChip T="string" Color="@GetStatusChipColor(selectedConsent)" Variant="Variant.Filled"
+                                Text="@selectedConsent.StatusDescription" />
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Owner</MudText>
+                        <MudText>@selectedConsent.OwnerName</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Owner Type</MudText>
+                        <MudText>@GetOwnerTypeName(selectedConsent.OwnerType)</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Purpose</MudText>
+                        <MudText>@selectedConsent.PurposeName</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Channel</MudText>
+                        <MudText>@selectedConsent.Channel</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Consent Date</MudText>
+                        <MudText>@selectedConsent.At.ToString("F")</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Valid Until</MudText>
+                        <MudText>@(selectedConsent.ValidUntil?.ToString("F") ?? "Indefinite")</MudText>
+                    </MudItem>
+                    @if (!string.IsNullOrEmpty(selectedConsent.Source))
+                    {
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Source</MudText>
+                            <MudText>@selectedConsent.Source</MudText>
+                        </MudItem>
+                    }
+                    @if (!string.IsNullOrEmpty(selectedConsent.Notes))
+                    {
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">Notes</MudText>
+                            <MudText>@selectedConsent.Notes</MudText>
+                        </MudItem>
+                    }
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Created</MudText>
+                        <MudText>@selectedConsent.Created?.ToString("F")</MudText>
+                    </MudItem>
+                    <MudItem xs="6">
+                        <MudText Typo="Typo.body2" Color="Color.Secondary">Last Modified</MudText>
+                        <MudText>@selectedConsent.LastModified?.ToString("F")</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudStack>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton Variant="Variant.Filled" OnClick="@(() => showConsentDetails = false)">Close</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private bool isLoading = true;
+    private int totalConsents = 0;
+    private int selectedOwnerType = 0;
+    private int selectedPurpose = 0;
+    private int selectedStatus = 0;
+
+    private List<ConsentDto> allConsents = new();
+    private List<ConsentDto> filteredConsents = new();
+
+    // Dialog state
+    private bool showConsentDetails = false;
+    private ConsentDto? selectedConsent;
+
+    // DTOs (would normally be shared with backend)
+    public class ConsentDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public int OwnerType { get; set; }
+        public string OwnerTypeName { get; set; } = string.Empty;
+        public string OwnerName { get; set; } = string.Empty;
+        public int Purpose { get; set; }
+        public string PurposeName { get; set; } = string.Empty;
+        public bool OptIn { get; set; }
+        public string Channel { get; set; } = string.Empty;
+        public DateTime At { get; set; }
+        public string? Source { get; set; }
+        public string? Notes { get; set; }
+        public DateTime? ValidUntil { get; set; }
+        public string StatusDescription { get; set; } = string.Empty;
+        public bool IsActive { get; set; }
+        public bool IsExpired { get; set; }
+        public DateTime? Created { get; set; }
+        public DateTime? LastModified { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadConsents();
+    }
+
+    private async Task LoadConsents()
+    {
+        isLoading = true;
+        try
+        {
+            // Mock data - replace with actual API call
+            await Task.Delay(1000);
+
+            allConsents = new List<ConsentDto>
+            {
+                new()
+                {
+                    Id = "1",
+                    OwnerType = 1,
+                    OwnerTypeName = "Client",
+                    OwnerName = "Tech Solutions Inc.",
+                    Purpose = 1,
+                    PurposeName = "Marketing",
+                    OptIn = true,
+                    Channel = "Web Form",
+                    At = DateTime.UtcNow.AddDays(-5),
+                    ValidUntil = DateTime.UtcNow.AddYears(2),
+                    Source = "Newsletter Signup",
+                    Notes = "Consent given during newsletter subscription",
+                    StatusDescription = "Active",
+                    IsActive = true,
+                    IsExpired = false,
+                    Created = DateTime.UtcNow.AddDays(-5),
+                    LastModified = DateTime.UtcNow.AddDays(-5)
+                },
+                new()
+                {
+                    Id = "2",
+                    OwnerType = 2,
+                    OwnerTypeName = "Contact",
+                    OwnerName = "João Silva",
+                    Purpose = 2,
+                    PurposeName = "Contractual",
+                    OptIn = true,
+                    Channel = "Email",
+                    At = DateTime.UtcNow.AddDays(-10),
+                    ValidUntil = null,
+                    Source = "Service Agreement",
+                    Notes = "Essential for service delivery",
+                    StatusDescription = "Active",
+                    IsActive = true,
+                    IsExpired = false,
+                    Created = DateTime.UtcNow.AddDays(-10),
+                    LastModified = DateTime.UtcNow.AddDays(-10)
+                },
+                new()
+                {
+                    Id = "3",
+                    OwnerType = 1,
+                    OwnerTypeName = "Client",
+                    OwnerName = "Global Services Ltd.",
+                    Purpose = 3,
+                    PurposeName = "Support",
+                    OptIn = true,
+                    Channel = "Phone",
+                    At = DateTime.UtcNow.AddDays(-30),
+                    ValidUntil = DateTime.UtcNow.AddDays(-5),
+                    Source = "Support Ticket",
+                    Notes = "Consent for technical support assistance",
+                    StatusDescription = "Expired",
+                    IsActive = false,
+                    IsExpired = true,
+                    Created = DateTime.UtcNow.AddDays(-30),
+                    LastModified = DateTime.UtcNow.AddDays(-30)
+                },
+                new()
+                {
+                    Id = "4",
+                    OwnerType = 2,
+                    OwnerTypeName = "Contact",
+                    OwnerName = "Maria Santos",
+                    Purpose = 1,
+                    PurposeName = "Marketing",
+                    OptIn = false,
+                    Channel = "SMS",
+                    At = DateTime.UtcNow.AddDays(-15),
+                    ValidUntil = null,
+                    Source = "Campaign Opt-out",
+                    Notes = "User withdrew marketing consent via SMS",
+                    StatusDescription = "Withdrawn",
+                    IsActive = false,
+                    IsExpired = false,
+                    Created = DateTime.UtcNow.AddDays(-15),
+                    LastModified = DateTime.UtcNow.AddDays(-15)
+                }
+            };
+
+            totalConsents = allConsents.Count;
+            FilterConsents();
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void FilterConsents()
+    {
+        var filtered = allConsents.AsEnumerable();
+
+        if (selectedOwnerType > 0)
+        {
+            filtered = filtered.Where(c => c.OwnerType == selectedOwnerType);
+        }
+
+        if (selectedPurpose > 0)
+        {
+            filtered = filtered.Where(c => c.Purpose == selectedPurpose);
+        }
+
+        if (selectedStatus > 0)
+        {
+            filtered = filtered.Where(c =>
+                selectedStatus == 1 ? c.IsActive :
+                selectedStatus == 2 ? c.IsExpired :
+                !c.IsActive && !c.IsExpired);
+        }
+
+        filteredConsents = filtered.OrderByDescending(c => c.At).ToList();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        FilterConsents();
+    }
+
+    private void OpenConsentMenu(ConsentDto consent)
+    {
+        // Could open a menu with more options
+        selectedConsent = consent;
+    }
+
+    private void ViewConsentDetails(ConsentDto consent)
+    {
+        selectedConsent = consent;
+        showConsentDetails = true;
+    }
+
+    private void EditConsent(ConsentDto consent)
+    {
+        // Navigate to edit page with consent ID
+        // Navigation.NavigateTo($"/lgpd/consents/{consent.Id}/edit");
+    }
+
+    private Color GetOwnerTypeColor(int ownerType)
+    {
+        return ownerType == 1 ? Color.Primary : Color.Secondary;
+    }
+
+    private string GetOwnerTypeName(int ownerType)
+    {
+        return ownerType == 1 ? "Client" : "Contact";
+    }
+
+    private Color GetPurposeColor(int purpose)
+    {
+        return purpose switch
+        {
+            1 => Color.Primary,   // Marketing
+            2 => Color.Success,   // Contractual
+            3 => Color.Info,      // Support
+            4 => Color.Warning,   // Legal
+            _ => Color.Default
+        };
+    }
+
+    private Color GetStatusChipColor(ConsentDto consent)
+    {
+        return consent.IsActive ? Color.Success :
+               consent.IsExpired ? Color.Warning : Color.Error;
+    }
+}

@@ -1,0 +1,390 @@
+@using System.Net.Http.Json
+@using CleanAspire.ClientApp.DTOs
+
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<MudPaper Class="pa-4" Elevation="2">
+    <!-- Header -->
+    <MudStack Row Spacing="2" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.ContactPage" />
+            <MudText Typo="Typo.h6">@Title</MudText>
+            @if (_channels.Any())
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Default">@_channels.Count</MudChip>
+            }
+        </MudStack>
+        <MudIconButton Icon="@Icons.Material.Filled.Add"
+                       OnClick="OpenCreateDialog"
+                       Size="Size.Small"
+                       Color="Color.Primary"
+                       Title="Add Channel" />
+    </MudStack>
+
+    <!-- Channels Content -->
+    <div style="max-height: 600px; overflow-y: auto;">
+        @if (_loading && !_channels.Any())
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-8">
+                <MudProgressCircular Indeterminate="true" />
+                <MudText Typo="Typo.body2">Loading communication channels...</MudText>
+            </MudStack>
+        }
+        else if (_error != null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">
+                Error loading channels: @_error
+            </MudAlert>
+        }
+        else if (!_channels.Any())
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-8">
+                <MudIcon Icon="@Icons.Material.Outlined.ContactPage" Size="Size.Large" Color="Color.Default" />
+                <MudText Typo="Typo.h6">No communication channels found</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Default">
+                    Communication channels will appear here as they are created
+                </MudText>
+            </MudStack>
+        }
+        else
+        {
+            @foreach (var channel in _channels.OrderByDescending(c => c.IsPrimary).ThenBy(c => c.Type).ThenByDescending(c => c.Created))
+            {
+                <MudPaper Class="pa-3 mb-2" Elevation="1">
+                    <MudStack Row Spacing="2" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                        <!-- Channel Info -->
+                        <MudStack Row Spacing="2" AlignItems="AlignItems.Center" Style="flex: 1;">
+                            <MudIcon Icon="@GetChannelIcon(channel.Type)" Color="@GetChannelColor(channel.Type)" />
+                            <MudStack Spacing="0" Style="flex: 1;">
+                                <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                    <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">
+                                        @GetChannelTypeLabel(channel.Type)
+                                    </MudText>
+                                    @if (channel.IsPrimary)
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Primary">Primary</MudChip>
+                                    }
+                                    @if (!string.IsNullOrEmpty(channel.Label))
+                                    {
+                                        <MudChip T="string" Size="Size.Small" Color="Color.Default">@channel.Label</MudChip>
+                                    }
+                                    @if (channel.IsVerified)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.Verified" Size="Size.Small" Color="Color.Success" Title="Verified" />
+                                    }
+                                    @if (!channel.OptedIn)
+                                    {
+                                        <MudIcon Icon="@Icons.Material.Filled.NotificationsOff" Size="Size.Small" Color="Color.Warning" Title="Opted Out" />
+                                    }
+                                </MudStack>
+                                <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                    @if (GetChannelLink(channel) != null)
+                                    {
+                                        <MudLink Href="@GetChannelLink(channel)" Target="_blank" Typo="Typo.body2">
+                                            @channel.DisplayValue
+                                        </MudLink>
+                                    }
+                                    else
+                                    {
+                                        <MudText Typo="Typo.body2" Color="Color.Default">@channel.DisplayValue</MudText>
+                                    }
+                                </MudStack>
+                            </MudStack>
+                        </MudStack>
+
+                        <!-- Actions -->
+                        <MudStack Row Spacing="1">
+                            @if (CanVerifyChannel(channel.Type) && !channel.IsVerified)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.VerifiedUser"
+                                               Size="Size.Small"
+                                               Color="Color.Success"
+                                               OnClick="@(() => VerifyChannel(channel.Id))"
+                                               Title="Verify" />
+                            }
+                            @if (!channel.IsPrimary)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Star"
+                                               Size="Size.Small"
+                                               Color="Color.Default"
+                                               OnClick="@(() => SetPrimary(channel.Id))"
+                                               Title="Set Primary" />
+                            }
+                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                           Size="Size.Small"
+                                           Color="Color.Primary"
+                                           OnClick="@(() => OpenEditDialog(channel))"
+                                           Title="Edit" />
+                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                           Size="Size.Small"
+                                           Color="Color.Error"
+                                           OnClick="@(() => DeleteChannel(channel.Id))"
+                                           Title="Delete" />
+                        </MudStack>
+                    </MudStack>
+                </MudPaper>
+            }
+        }
+    </div>
+</MudPaper>
+
+@code {
+    /// <summary>
+    /// Type of entity (Client, Contact, etc.) - Required
+    /// </summary>
+    [Parameter, EditorRequired]
+    public OwnerType OwnerType { get; set; }
+
+    /// <summary>
+    /// ID of the entity - Required
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Guid OwnerId { get; set; }
+
+    /// <summary>
+    /// Panel title (default: "Communication Channels")
+    /// </summary>
+    [Parameter]
+    public string Title { get; set; } = "Communication Channels";
+
+    // State
+    private List<ChannelDto> _channels = new();
+    private bool _loading = false;
+    private string? _error = null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadChannels();
+    }
+
+    private async Task LoadChannels()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var url = $"/api/crm/channels/owner/{OwnerType}/{OwnerId}";
+            var response = await Http.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _error = $"API returned {response.StatusCode}";
+                return;
+            }
+
+            _channels = await response.Content.ReadFromJsonAsync<List<ChannelDto>>() ?? new();
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add($"Error loading channels: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task OpenCreateDialog()
+    {
+        var parameters = new DialogParameters
+        {
+            { "OwnerType", OwnerType },
+            { "OwnerId", OwnerId }
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ChannelDialog>("Create Communication Channel", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            await LoadChannels();
+        }
+    }
+
+    private async Task OpenEditDialog(ChannelDto channel)
+    {
+        var parameters = new DialogParameters
+        {
+            { "Channel", channel }
+        };
+
+        var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<ChannelDialog>("Edit Communication Channel", parameters, options);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            await LoadChannels();
+        }
+    }
+
+    private async Task SetPrimary(Guid channelId)
+    {
+        try
+        {
+            var response = await Http.PostAsync($"/api/crm/channels/{channelId}/set-primary", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Primary channel updated", Severity.Success);
+                await LoadChannels();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to set primary channel: {response.StatusCode}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error setting primary channel: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task VerifyChannel(Guid channelId)
+    {
+        try
+        {
+            var response = await Http.PostAsync($"/api/crm/channels/{channelId}/verify", null);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Channel verified successfully", Severity.Success);
+                await LoadChannels();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to verify channel: {response.StatusCode}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error verifying channel: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteChannel(Guid channelId)
+    {
+        var confirmed = await DialogService.ShowMessageBox(
+            "Confirm Delete",
+            "Are you sure you want to delete this communication channel?",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed == true)
+        {
+            try
+            {
+                var response = await Http.DeleteAsync($"/api/crm/channels/{channelId}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Channel deleted successfully", Severity.Success);
+                    await LoadChannels();
+                }
+                else
+                {
+                    Snackbar.Add($"Failed to delete channel: {response.StatusCode}", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting channel: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private string GetChannelIcon(ChannelType type)
+    {
+        return type switch
+        {
+            ChannelType.Email => Icons.Material.Filled.Email,
+            ChannelType.Phone => Icons.Material.Filled.Phone,
+            ChannelType.Mobile => Icons.Material.Filled.Smartphone,
+            ChannelType.WhatsApp => Icons.Material.Filled.Chat,
+            ChannelType.Website => Icons.Material.Filled.Language,
+            ChannelType.Instagram => Icons.Material.Filled.Photo,
+            ChannelType.LinkedIn => Icons.Material.Filled.Business,
+            ChannelType.Facebook => Icons.Material.Filled.Public,
+            ChannelType.Twitter => Icons.Material.Filled.Public,
+            ChannelType.Telegram => Icons.Material.Filled.Send,
+            ChannelType.Skype => Icons.Material.Filled.VideoCall,
+            _ => Icons.Material.Filled.ContactPage
+        };
+    }
+
+    private Color GetChannelColor(ChannelType type)
+    {
+        return type switch
+        {
+            ChannelType.Email => Color.Primary,
+            ChannelType.Phone or ChannelType.Mobile => Color.Success,
+            ChannelType.WhatsApp => Color.Success,
+            ChannelType.Instagram => Color.Secondary,
+            ChannelType.LinkedIn => Color.Info,
+            ChannelType.Facebook or ChannelType.Twitter => Color.Info,
+            _ => Color.Default
+        };
+    }
+
+    private string GetChannelTypeLabel(ChannelType type)
+    {
+        return type switch
+        {
+            ChannelType.WhatsApp => "WhatsApp",
+            ChannelType.LinkedIn => "LinkedIn",
+            ChannelType.Facebook => "Facebook",
+            ChannelType.Twitter => "Twitter",
+            ChannelType.Telegram => "Telegram",
+            ChannelType.Skype => "Skype",
+            _ => type.ToString()
+        };
+    }
+
+    private string? GetChannelLink(ChannelDto channel)
+    {
+        return channel.Type switch
+        {
+            ChannelType.Email => $"mailto:{channel.Value}",
+            ChannelType.Phone or ChannelType.Mobile => $"tel:{channel.Value}",
+            ChannelType.WhatsApp => $"https://wa.me/{channel.Value.Replace("+", "").Replace(" ", "").Replace("-", "")}",
+            ChannelType.Website => channel.Value.StartsWith("http") ? channel.Value : $"https://{channel.Value}",
+            ChannelType.Instagram => channel.Value.StartsWith("http") ? channel.Value : $"https://instagram.com/{channel.Value.TrimStart('@')}",
+            ChannelType.LinkedIn => channel.Value.StartsWith("http") ? channel.Value : $"https://linkedin.com/in/{channel.Value}",
+            ChannelType.Facebook => channel.Value.StartsWith("http") ? channel.Value : $"https://facebook.com/{channel.Value}",
+            ChannelType.Twitter => channel.Value.StartsWith("http") ? channel.Value : $"https://twitter.com/{channel.Value.TrimStart('@')}",
+            ChannelType.Telegram => $"https://t.me/{channel.Value.TrimStart('@')}",
+            _ => null
+        };
+    }
+
+    private bool CanVerifyChannel(ChannelType type)
+    {
+        return type == ChannelType.Email || type == ChannelType.Phone || type == ChannelType.Mobile;
+    }
+
+    /// <summary>
+    /// Public method to refresh channels (can be called from parent)
+    /// </summary>
+    public async Task RefreshChannels()
+    {
+        await LoadChannels();
+    }
+}
+
+@* Placeholder for Channel Dialog Component *@
+@code {
+    private class ChannelDialog : ComponentBase
+    {
+        [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+        [Parameter] public OwnerType OwnerType { get; set; }
+        [Parameter] public Guid OwnerId { get; set; }
+        [Parameter] public ChannelDto? Channel { get; set; }
+    }
+}

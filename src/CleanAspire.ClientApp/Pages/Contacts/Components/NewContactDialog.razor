@@ -1,0 +1,353 @@
+@inject ContactServiceProxy ContactServiceProxy
+@inject ClientServiceProxy ClientServiceProxy
+@inject ISnackbar Snackbar
+
+<MudDialog @bind-IsOpen="@_isOpen"
+           Class="pa-0"
+           MaxWidth="MaxWidth.Large"
+           DisableSidePadding="true">
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Outlined.Person" Class="mr-3" />
+            @(IsEdit ? @L["Edit Contact"] : @L["New Contact"])
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" Model="@_contactModel" @bind-IsValid="@_isValid">
+            <MudStack Spacing="2">
+                <!-- Basic Information -->
+                <MudText Typo="Typo.subtitle1">@L["Basic Information"]</MudText>
+
+                <!-- Client Selection -->
+                <MudSelect T="string"
+                            @bind-Value="_contactModel.ClientId"
+                            Label="@L["Client *"]"
+                            Required="true"
+                            RequiredError="@L["Client is required"]"
+                            Disabled="@_loadingClients">
+                    @if (_loadingClients)
+                    {
+                        <MudSelectItem Value="@string.Empty">@L["Loading clients..."]</MudSelectItem>
+                    }
+                    else
+                    {
+                        @foreach (var client in _clients)
+                        {
+                            <MudSelectItem Value="@client.Id">@client.DisplayName</MudSelectItem>
+                        }
+                    }
+                </MudSelect>
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string"
+                                      @bind-Value="_contactModel.FirstName"
+                                      Label="@L["First Name *"]"
+                                      Required="true"
+                                      RequiredError="@L["First name is required"]" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string"
+                                      @bind-Value="_contactModel.LastName"
+                                      Label="@L["Last Name *"]"
+                                      Required="true"
+                                      RequiredError="@L["Last name is required"]" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudTextField T="string"
+                              @bind-Value="_contactModel.Email"
+                              Label="@L["Email *"]"
+                              Type="InputType.Email"
+                              Required="true"
+                              RequiredError="@L["Email is required"]" />
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string"
+                                      @bind-Value="_contactModel.Phone"
+                                      Label="@L["Phone"]" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string"
+                                      @bind-Value="_contactModel.MobilePhone"
+                                      Label="@L["Mobile Phone"]" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudTextField T="string"
+                              @bind-Value="_contactModel.JobTitle"
+                              Label="@L["Job Title"]" />
+
+                <MudTextField T="string"
+                              @bind-Value="_contactModel.Department"
+                              Label="@L["Department"]" />
+
+                <MudDivider />
+
+                <!-- Address Information -->
+                <MudText Typo="Typo.subtitle1">@L["Address Information"]</MudText>
+                <MudTextField T="string"
+                              @bind-Value="_contactModel.Address"
+                              Label="@L["Address"]" />
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string"
+                                      @bind-Value="_contactModel.City"
+                                      Label="@L["City"]" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField T="string"
+                                      @bind-Value="_contactModel.State"
+                                      Label="@L["State"]" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudTextField T="string"
+                              @bind-Value="_contactModel.PostalCode"
+                              Label="@L["Postal Code"]" />
+
+                <MudDivider />
+
+                <!-- Contact Information -->
+                <MudText Typo="Typo.subtitle1">@L["Contact Information"]</MudText>
+
+                <MudSelect T="int"
+                            @bind-Value="_contactModel.Type"
+                            Label="@L["Contact Type *"]"
+                            Required="true">
+                    @foreach (var contactType in GetContactTypes())
+                    {
+                        <MudSelectItem Value="@contactType.Value">@contactType.Text</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudSelect T="int"
+                            @bind-Value="_contactModel.Status"
+                            Label="@L["Status *"]"
+                            Required="true">
+                    @foreach (var status in GetStatusOptions())
+                    {
+                        <MudSelectItem Value="@status.Value">@status.Text</MudSelectItem>
+                    }
+                </MudSelect>
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="6">
+                        <MudCheckBox T="bool"
+                                     @bind-Checked="_contactModel.IsMainContact"
+                                     Label="@L["Main Contact"]"
+                                     Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudCheckBox T="bool"
+                                     @bind-Checked="_contactModel.IsDecisionMaker"
+                                     Label="@L["Decision Maker"]"
+                                     Color="Color.Warning" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="_contactModel.BirthDate"
+                                       Label="@L["Birth Date"]" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudDatePicker @bind-Date="_contactModel.LastContactDate"
+                                       Label="@L["Last Contact Date"]" />
+                    </MudItem>
+                </MudGrid>
+
+                <MudTextField T="string"
+                              @bind-Value="_contactModel.Tags"
+                              Label="@L["Tags"]"
+                              HelperText="@L["Separate tags with commas"]" />
+
+                <MudTextField T="string"
+                              @bind-Value="_contactModel.Notes"
+                              Label="@L["Notes"]"
+                              Lines="3" />
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default" OnClick="Cancel">@L["Cancel"]</MudButton>
+        <MudButton Color="Color.Primary"
+                   Disabled="@(!_isValid || _loading)"
+                   OnClick="Submit">
+            @if (_loading)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+            }
+            @(IsEdit ? @L["Update"] : @L["Create"])
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public bool IsEdit { get; set; } = false;
+
+    [Parameter]
+    public ContactDto? Contact { get; set; }
+
+    [Parameter]
+    public string? ClientId { get; set; }
+
+    private bool _isOpen = true;
+    private bool _loading = false;
+    private bool _loadingClients = false;
+    private bool _isValid = false;
+    private MudForm? _form;
+    private ContactDto _contactModel = new();
+    private List<ClientDto> _clients = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadClients();
+    }
+
+    private async Task LoadClients()
+    {
+        _loadingClients = true;
+        StateHasChanged();
+
+        try
+        {
+            var result = await ClientServiceProxy.GetClientsWithPaginationAsync(1, 1000);
+            _clients = result?.Items?.ToList() ?? new List<ClientDto>();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading clients for contact dialog: {ex.Message}");
+            Snackbar.Add(@L["Error loading clients"], Severity.Error);
+        }
+        finally
+        {
+            _loadingClients = false;
+            StateHasChanged();
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (IsEdit && Contact != null)
+        {
+            _contactModel = new ContactDto
+            {
+                Id = Contact.Id,
+                FirstName = Contact.FirstName,
+                LastName = Contact.LastName,
+                Email = Contact.Email,
+                Phone = Contact.Phone,
+                MobilePhone = Contact.MobilePhone,
+                JobTitle = Contact.JobTitle,
+                Department = Contact.Department,
+                Address = Contact.Address,
+                City = Contact.City,
+                State = Contact.State,
+                PostalCode = Contact.PostalCode,
+                Notes = Contact.Notes,
+                Tags = Contact.Tags,
+                Type = Contact.Type,
+                Status = Contact.Status,
+                IsMainContact = Contact.IsMainContact,
+                IsDecisionMaker = Contact.IsDecisionMaker,
+                BirthDate = Contact.BirthDate,
+                LastContactDate = Contact.LastContactDate,
+                ClientId = Contact.ClientId,
+                ClientName = Contact.ClientName,
+                ClientDisplayName = Contact.ClientDisplayName
+            };
+        }
+        else if (!IsEdit)
+        {
+            // For new contacts, set default values
+            _contactModel.Type = 1; // Lead
+            _contactModel.Status = 1; // Active
+
+            // Set ClientId if provided as parameter
+            if (!string.IsNullOrEmpty(ClientId))
+            {
+                _contactModel.ClientId = ClientId;
+            }
+        }
+    }
+
+    private async Task Submit()
+    {
+        if (_form == null || !_form.IsValid) return;
+
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            ContactDto? result;
+
+            if (IsEdit)
+            {
+                var success = await ContactServiceProxy.UpdateContactAsync(_contactModel.Id, _contactModel);
+                if (success)
+                {
+                    Snackbar.Add(@L["Contact updated successfully"], Severity.Success);
+                    MudDialog.Close(DialogResult.Ok(true));
+                }
+                else
+                {
+                    Snackbar.Add(@L["Failed to update contact"], Severity.Error);
+                }
+                return;
+            }
+            else
+            {
+                result = await ContactServiceProxy.CreateContactAsync(_contactModel);
+            }
+
+            if (result != null)
+            {
+                Snackbar.Add(@L["Contact created successfully"], Severity.Success);
+                MudDialog.Close(DialogResult.Ok(result));
+            }
+            else
+            {
+                Snackbar.Add(@L["Failed to create contact"], Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add(@L["An error occurred: {0}", ex.Message], Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    private IEnumerable<(int Value, string Text)> GetContactTypes()
+    {
+        yield return (1, @L["Lead"]);
+        yield return (2, @L["Prospect"]);
+        yield return (3, @L["Client"]);
+        yield return (4, @L["Partner"]);
+        yield return (5, @L["Vendor"]);
+        yield return (6, @L["Employee"]);
+    }
+
+    private IEnumerable<(int Value, string Text)> GetStatusOptions()
+    {
+        yield return (1, @L["Active"]);
+        yield return (2, @L["Inactive"]);
+        yield return (3, @L["Qualified"]);
+        yield return (4, @L["Unqualified"]);
+    }
+}

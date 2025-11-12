@@ -1,0 +1,146 @@
+using CleanAspire.Application.Features.Consents.Commands;
+using CleanAspire.Application.Features.Consents.DTOs;
+using CleanAspire.Application.Features.Consents.Queries;
+using Mediator;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CleanAspire.Api.Endpoints;
+
+/// <summary>
+/// This class defines minimal API endpoints related to consent management.
+/// Phase 4: LGPD Compliance - Consent & Data Privacy
+/// Each endpoint corresponds to a specific command or query defined in the Features layer.
+/// The purpose is to expose a RESTful interface for managing consents, data export, and erasure requests.
+/// </summary>
+public class ConsentEndpointRegistrar(ILogger<ConsentEndpointRegistrar> logger) : IEndpointRegistrar
+{
+    /// <summary>
+    /// Registers the routes for consent-related endpoints.
+    /// </summary>
+    /// <param name="routes">The route builder to which the endpoints will be added.</param>
+    public void RegisterRoutes(IEndpointRouteBuilder routes)
+    {
+        // LGPD Compliance endpoints
+        var group = routes.MapGroup("/api/crm/consents").WithTags("LGPD.Consents").RequireAuthorization();
+
+        /// <summary>
+        /// Records a new consent or updates an existing one.
+        /// </summary>
+        /// <param name="request">The consent data to record.</param>
+        /// <returns>The created or updated consent details.</returns>
+        group.MapPost("/", async ([FromServices] IMediator mediator, [FromBody] CreateConsentDto request) =>
+        {
+            var command = new RecordConsentCommand
+            {
+                OwnerType = request.OwnerType,
+                OwnerId = request.OwnerId,
+                Purpose = request.Purpose,
+                OptIn = request.OptIn,
+                Channel = request.Channel,
+                At = request.At,
+                Source = request.Source,
+                IpAddress = request.IpAddress,
+                UserAgent = request.UserAgent,
+                Notes = request.Notes,
+                ValidUntil = request.ValidUntil
+            };
+
+            return await mediator.Send(command);
+        })
+        .Produces<ConsentDto>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status500InternalServerError)
+        .WithSummary("Record consent")
+        .WithDescription("Records a new consent or updates an existing consent for a data subject.");
+
+        /// <summary>
+        /// Gets consents by owner.
+        /// </summary>
+        /// <param name="ownerType">The type of the owner (Client=1, Contact=2).</param>
+        /// <param name="ownerId">The unique ID of the owner.</param>
+        /// <param name="includeInactive">Whether to include inactive consents.</param>
+        /// <returns>A list of consents for the specified owner.</returns>
+        group.MapGet("/owner/{ownerType}/{ownerId}", async ([FromServices] IMediator mediator,
+            [FromRoute] int ownerType, [FromRoute] Guid ownerId, [FromQuery] bool includeInactive = false) =>
+        {
+            var query = new GetConsentsByOwnerQuery
+            {
+                OwnerType = ownerType,
+                OwnerId = ownerId,
+                IncludeInactive = includeInactive
+            };
+
+            return await mediator.Send(query);
+        })
+        .Produces<List<ConsentListDto>>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status500InternalServerError)
+        .WithSummary("Get consents by owner")
+        .WithDescription("Retrieves all consents for a specific data subject (client or contact).");
+
+        /// <summary>
+        /// Gets a consent by its ID.
+        /// </summary>
+        /// <param name="id">The unique ID of the consent.</param>
+        /// <returns>The details of the specified consent.</returns>
+        group.MapGet("/{id}", async ([FromServices] IMediator mediator, [FromRoute] string id) =>
+        {
+            return await mediator.Send(new GetConsentByIdQuery { Id = id });
+        })
+        .Produces<ConsentDto>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status500InternalServerError)
+        .WithSummary("Get consent by ID")
+        .WithDescription("Retrieves the details of a specific consent record.");
+
+        /// <summary>
+        /// Exports personal data for a data subject.
+        /// </summary>
+        /// <param name="request">The data export request.</param>
+        /// <returns>Information about the export request.</returns>
+        group.MapPost("/export", async ([FromServices] IMediator mediator, [FromBody] DataExportRequestDto request) =>
+        {
+            var command = new RequestDataExportCommand
+            {
+                OwnerType = request.OwnerType,
+                OwnerId = request.OwnerId,
+                Format = request.Format
+            };
+
+            return await mediator.Send(command);
+        })
+        .Produces<DataProcessingRequestResponseDto>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status500InternalServerError)
+        .WithSummary("Export personal data")
+        .WithDescription("Exports all personal data for a data subject in the specified format (JSON or CSV).");
+
+        /// <summary>
+        /// Requests erasure of personal data (right to be forgotten).
+        /// </summary>
+        /// <param name="request">The data erasure request.</param>
+        /// <returns>Information about the erasure request.</returns>
+        group.MapPost("/erasure", async ([FromServices] IMediator mediator, [FromBody] DataErasureRequestDto request) =>
+        {
+            var command = new RequestErasureCommand
+            {
+                OwnerType = request.OwnerType,
+                OwnerId = request.OwnerId,
+                Reason = request.Reason
+            };
+
+            return await mediator.Send(command);
+        })
+        .Produces<DataProcessingRequestResponseDto>(StatusCodes.Status200OK)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status401Unauthorized)
+        .ProducesProblem(StatusCodes.Status500InternalServerError)
+        .WithSummary("Request data erasure")
+        .WithDescription("Requests the deletion or anonymization of personal data for a data subject (LGPD right to be forgotten).");
+    }
+}

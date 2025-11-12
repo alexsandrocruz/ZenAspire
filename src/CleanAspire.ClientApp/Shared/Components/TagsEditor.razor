@@ -1,0 +1,289 @@
+@using System.Net.Http.Json
+@using CleanAspire.ClientApp.DTOs
+
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<MudStack Spacing="2">
+    <!-- Label -->
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <MudText Typo="Typo.caption">@Label</MudText>
+    }
+
+    <!-- Tags Display -->
+    <MudStack Row Spacing="1" Wrap="Wrap.Wrap">
+        @if (_loading && !_tags.Any())
+        {
+            <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+        }
+        else if (_tags.Any())
+        {
+            @foreach (var tag in _tags)
+            {
+                <MudChip T="string"
+                         Size="Size.Small"
+                         Color="Color.Default"
+                         Style="@GetTagStyle(tag.Color)"
+                         OnClose="@(ReadOnly ? null : () => RemoveTag(tag.Id))"
+                         CloseIcon="@(ReadOnly ? null : Icons.Material.Filled.Close)">
+                    @tag.Name
+                </MudChip>
+            }
+        }
+        else if (!ReadOnly)
+        {
+            <MudText Typo="Typo.caption" Color="Color.Default">No tags yet. Start typing to add tags.</MudText>
+        }
+
+        <!-- Add Tag Input (Autocomplete) -->
+        @if (!ReadOnly)
+        {
+            <MudAutocomplete T="TagDto"
+                             @bind-Value="_selectedTag"
+                             SearchFunc="SearchTags"
+                             ToStringFunc="@(tag => tag?.Name ?? "")"
+                             Label="Add tag"
+                             Variant="Variant.Outlined"
+                             Dense="true"
+                             ResetValueOnEmptyText="true"
+                             CoerceText="true"
+                             CoerceValue="false"
+                             AdornmentIcon="@Icons.Material.Filled.Add"
+                             AdornmentColor="Color.Primary"
+                             OnAdornmentClick="AddSelectedTag"
+                             MaxItems="10"
+                             DebounceInterval="300"
+                             Style="max-width: 250px;">
+                <ItemTemplate Context="tag">
+                    <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
+                        <div style="width: 16px; height: 16px; border-radius: 50%; background-color: @(tag.Color ?? "#757575");"></div>
+                        <MudText>@tag.Name</MudText>
+                    </MudStack>
+                </ItemTemplate>
+            </MudAutocomplete>
+        }
+    </MudStack>
+
+    @if (_error != null)
+    {
+        <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+    }
+</MudStack>
+
+@code {
+    /// <summary>
+    /// Type of entity (Client, Contact, etc.) - Required
+    /// </summary>
+    [Parameter, EditorRequired]
+    public OwnerType OwnerType { get; set; }
+
+    /// <summary>
+    /// ID of the entity - Required
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Guid OwnerId { get; set; }
+
+    /// <summary>
+    /// Read-only mode (default: false)
+    /// </summary>
+    [Parameter]
+    public bool ReadOnly { get; set; } = false;
+
+    /// <summary>
+    /// Optional label for the tags section
+    /// </summary>
+    [Parameter]
+    public string? Label { get; set; }
+
+    /// <summary>
+    /// Event callback when tags change
+    /// </summary>
+    [Parameter]
+    public EventCallback OnTagsChanged { get; set; }
+
+    // State
+    private List<TagDto> _tags = new();
+    private List<TagDto> _availableTags = new();
+    private TagDto? _selectedTag = null;
+    private bool _loading = false;
+    private string? _error = null;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadTags();
+    }
+
+    /// <summary>
+    /// Loads current tags for the entity
+    /// </summary>
+    private async Task LoadTags()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var url = $"/api/crm/tags/owner/{OwnerType}/{OwnerId}";
+            var response = await Http.GetAsync(url);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _tags = await response.Content.ReadFromJsonAsync<List<TagDto>>() ?? new();
+            }
+            else
+            {
+                _error = $"Failed to load tags: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add($"Error loading tags: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Searches available tags with autocomplete
+    /// </summary>
+    private async Task<IEnumerable<TagDto>> SearchTags(string searchText, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(searchText))
+            return Array.Empty<TagDto>();
+
+        try
+        {
+            var url = $"/api/crm/tags?search={Uri.EscapeDataString(searchText)}";
+            var response = await Http.GetAsync(url, cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var allTags = await response.Content.ReadFromJsonAsync<List<TagDto>>(cancellationToken: cancellationToken) ?? new();
+
+                // Filter out already linked tags
+                var existingTagIds = _tags.Select(t => t.Id).ToHashSet();
+                return allTags.Where(t => !existingTagIds.Contains(t.Id)).ToList();
+            }
+
+            return Array.Empty<TagDto>();
+        }
+        catch (OperationCanceledException)
+        {
+            return Array.Empty<TagDto>();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error searching tags: {ex.Message}", Severity.Error);
+            return Array.Empty<TagDto>();
+        }
+    }
+
+    /// <summary>
+    /// Adds the selected tag to the entity
+    /// </summary>
+    private async Task AddSelectedTag()
+    {
+        if (_selectedTag == null)
+            return;
+
+        await AddTag(_selectedTag);
+        _selectedTag = null;
+    }
+
+    /// <summary>
+    /// Links a tag to the entity
+    /// </summary>
+    private async Task AddTag(TagDto tag)
+    {
+        try
+        {
+            var request = new TagLinkRequest
+            {
+                TagId = tag.Id,
+                OwnerType = OwnerType,
+                OwnerId = OwnerId
+            };
+
+            var response = await Http.PostAsJsonAsync("/api/crm/tags/link", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                _tags.Add(tag);
+                Snackbar.Add($"Tag '{tag.Name}' added", Severity.Success);
+                await OnTagsChanged.InvokeAsync();
+                StateHasChanged();
+            }
+            else
+            {
+                Snackbar.Add($"Failed to add tag: {response.StatusCode}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error adding tag: {ex.Message}", Severity.Error);
+        }
+    }
+
+    /// <summary>
+    /// Unlinks a tag from the entity
+    /// </summary>
+    private async Task RemoveTag(Guid tagId)
+    {
+        try
+        {
+            var request = new TagLinkRequest
+            {
+                TagId = tagId,
+                OwnerType = OwnerType,
+                OwnerId = OwnerId
+            };
+
+            var response = await Http.PostAsJsonAsync("/api/crm/tags/unlink", request);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var tag = _tags.FirstOrDefault(t => t.Id == tagId);
+                if (tag != null)
+                {
+                    _tags.Remove(tag);
+                    Snackbar.Add($"Tag '{tag.Name}' removed", Severity.Success);
+                    await OnTagsChanged.InvokeAsync();
+                    StateHasChanged();
+                }
+            }
+            else
+            {
+                Snackbar.Add($"Failed to remove tag: {response.StatusCode}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error removing tag: {ex.Message}", Severity.Error);
+        }
+    }
+
+    /// <summary>
+    /// Gets inline CSS style for tag chips with custom colors
+    /// </summary>
+    private string GetTagStyle(string? color)
+    {
+        if (string.IsNullOrEmpty(color))
+            return string.Empty;
+
+        // Parse hex color and create a lighter background with darker text
+        return $"background-color: {color}22; color: {color}; border: 1px solid {color};";
+    }
+
+    /// <summary>
+    /// Public method to refresh tags (can be called from parent)
+    /// </summary>
+    public async Task RefreshTags()
+    {
+        await LoadTags();
+    }
+}

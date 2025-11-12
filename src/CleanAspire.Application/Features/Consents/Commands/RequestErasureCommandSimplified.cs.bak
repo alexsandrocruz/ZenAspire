@@ -1,0 +1,161 @@
+using CleanAspire.Application.Features.Consents.DTOs;
+using CleanAspire.Application.Pipeline;
+using CleanAspire.Domain.Entities;
+using CleanAspire.Domain.Enums;
+using CleanAspire.Domain.Events;
+
+namespace CleanAspire.Application.Features.Consents.Commands;
+
+/// <summary>
+/// Simplified version of RequestErasureCommand.
+/// Phase 4: LGPD Compliance - Data Erasure Workflow
+/// </summary>
+public record RequestErasureCommandSimplified : IFusionCacheRefreshRequest<DataProcessingRequestResponseDto>, IRequiresValidation
+{
+    public int OwnerType { get; init; }
+    public Guid OwnerId { get; init; }
+    public string? Reason { get; init; }
+
+    public IEnumerable<string>? Tags => new[] { "data-erasure", $"owner-{OwnerType}", $"owner-{OwnerId}" };
+}
+
+/// <summary>
+/// Simplified Handler for processing RequestErasureCommand.
+/// Implements the right to be forgotten by anonymizing personal data.
+/// </summary>
+public class RequestErasureCommandSimplifiedHandler : IRequestHandler<RequestErasureCommandSimplified, DataProcessingRequestResponseDto>
+{
+    private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUser;
+
+    public RequestErasureCommandSimplifiedHandler(
+        IApplicationDbContext context,
+        ICurrentUserService currentUser)
+    {
+        _context = context;
+        _currentUser = currentUser;
+    }
+
+    public async ValueTask<DataProcessingRequestResponseDto> Handle(RequestErasureCommandSimplified request, CancellationToken cancellationToken)
+    {
+        // Validate tenant
+        if (string.IsNullOrEmpty(_currentUser.TenantId))
+            throw new UnauthorizedAccessException("TenantId is required");
+
+        // Validate enum values
+        if (!Enum.IsDefined(typeof(OwnerType), request.OwnerType))
+            throw new ArgumentException("Invalid OwnerType value");
+
+        var requestId = Guid.NewGuid().ToString();
+        var startTime = DateTime.UtcNow;
+
+        try
+        {
+            // Raise domain event for audit trail
+            var domainEvent = new SubjectErasureRequestedEvent(
+                (OwnerType)request.OwnerType,
+                request.OwnerId,
+                _currentUser.UserId ?? "system",
+                request.Reason);
+
+            // Process erasure based on owner type
+            switch ((OwnerType)request.OwnerType)
+            {
+                case OwnerType.Client:
+                    await AnonymizeClientDataAsync(request.OwnerId, cancellationToken);
+                    break;
+
+                case OwnerType.Contact:
+                    await AnonymizeContactDataAsync(request.OwnerId, cancellationToken);
+                    break;
+
+                default:
+                    throw new ArgumentException($"Erasure not supported for owner type: {request.OwnerType}");
+            }
+
+            return new DataProcessingRequestResponseDto
+            {
+                RequestId = requestId,
+                OwnerType = request.OwnerType,
+                OwnerTypeName = ((OwnerType)request.OwnerType).ToString(),
+                OwnerId = request.OwnerId,
+                RequestType = "Erasure",
+                Status = "Completed",
+                RequestedAt = startTime,
+                CompletedAt = DateTime.UtcNow
+            };
+        }
+        catch (Exception ex)
+        {
+            return new DataProcessingRequestResponseDto
+            {
+                RequestId = requestId,
+                OwnerType = request.OwnerType,
+                OwnerTypeName = ((OwnerType)request.OwnerType).ToString(),
+                OwnerId = request.OwnerId,
+                RequestType = "Erasure",
+                Status = "Failed",
+                RequestedAt = startTime,
+                CompletedAt = DateTime.UtcNow,
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+
+    private async Task AnonymizeClientDataAsync(Guid clientId, CancellationToken cancellationToken)
+    {
+        var client = await _context.Clients
+            .FirstOrDefaultAsync(c => c.Id == clientId.ToString(), cancellationToken);
+
+        if (client == null)
+            throw new InvalidOperationException("Client not found");
+
+        // Anonymize personal data while preserving business records
+        client.Name = $"ANONYMIZED_CLIENT_{client.Id.Substring(0, 8)}";
+        client.LegalName = null;
+        client.TradeName = null;
+        client.TaxId = null;
+        client.Email = null;
+        client.Phone = null;
+        client.Website = null;
+        client.Address = null;
+        client.City = null;
+        client.State = null;
+        client.PostalCode = null;
+        client.Country = null;
+        client.Notes = "[ANONYMIZED - Data erasure request processed]";
+        client.LastModified = DateTime.UtcNow;
+        client.LastModifiedBy = "DATA_ERASURE_SYSTEM";
+
+        // Add domain event for audit
+        client.AddDomainEvent(new ClientUpdatedEvent(client));
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task AnonymizeContactDataAsync(Guid contactId, CancellationToken cancellationToken)
+    {
+        var contact = await _context.Contacts
+            .FirstOrDefaultAsync(c => c.Id == contactId.ToString(), cancellationToken);
+
+        if (contact == null)
+            throw new InvalidOperationException("Contact not found");
+
+        // Anonymize personal data
+        contact.FirstName = "ANONYMIZED";
+        contact.LastName = $"CONTACT_{contact.Id.Substring(0, 8)}";
+        contact.Email = null;
+        contact.Phone = null;
+        contact.Mobile = null;
+        contact.JobTitle = null;
+        contact.Department = null;
+        contact.Notes = "[ANONYMIZED - Data erasure request processed]";
+        contact.LastModified = DateTime.UtcNow;
+        contact.LastModifiedBy = "DATA_ERASURE_SYSTEM";
+
+        // Add domain event for audit
+        contact.AddDomainEvent(new ContactUpdatedEvent(contact));
+
+        await _context.SaveChangesAsync(cancellationToken);
+    }
+}

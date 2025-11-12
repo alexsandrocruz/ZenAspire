@@ -1,0 +1,309 @@
+@page "/segments/index"
+@using CleanAspire.ClientApp.Models.Segments
+@using CleanAspire.ClientApp.Services.Segments
+@using MudBlazor
+@using CleanAspire.ClientApp.Shared
+@inject SegmentService SegmentService
+@inject NavigationManager NavigationManager
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+
+<PageTitle>Segments</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.False" Class="pa-4">
+    <MudGrid>
+        <MudItem xs="12">
+            <MudPaper Elevation="2" Class="pa-4">
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.h4" Color="Color.Primary">
+                        <MudIcon Icon="@Icons.Material.Filled.Group" Class="mr-2" />
+                        Segmentation Engine
+                    </MudText>
+                    <MudText Typo="Typo.body1" Color="Color.Surface">
+                        Create and manage dynamic segments for targeted marketing and analytics
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudPaper Elevation="1" Class="pa-4">
+                <MudStack Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                    <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                        <MudButton StartIcon="@Icons.Material.Filled.Add" Variant="Variant.Filled" Color="Color.Primary" @onclick="NavigateToCreate">
+                            Create Segment
+                        </MudButton>
+                        <MudButton
+                            StartIcon="@Icons.Material.Filled.Refresh"
+                            Variant="Variant.Outlined"
+                            @onclick="LoadSegmentsAsync"
+                            Loading="@_loading">
+                            Refresh
+                        </MudButton>
+                    </MudStack>
+
+                    <MudStack Spacing="2" AlignItems="AlignItems.Center">
+                        <MudTextField @bind-Value="_searchTerm"
+                                     Placeholder="Search segments..."
+                                     Variant="Variant.Outlined"
+                                     Immediate="true"
+                                     Margin="Margin.Dense"
+                                     Style="min-width: 250px;"
+                                     Adornment="Adornment.Start"
+                                     AdornmentIcon="@Icons.Material.Filled.Search" />
+                        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit">
+                            <MudMenu>
+                                <MudMenuItem @onclick="RebuildAllSegmentsAsync">
+                                    <MudIcon Icon="@Icons.Material.Filled.Refresh" Class="mr-2" />
+                                    Rebuild All Segments
+                                </MudMenuItem>
+                                <MudMenuItem @onclick="ExportSegmentsAsync">
+                                    <MudIcon Icon="@Icons.Material.Filled.Download" Class="mr-2" />
+                                    Export Segments
+                                </MudMenuItem>
+                            </MudMenu>
+                        </MudIconButton>
+                    </MudStack>
+                </MudStack>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudPaper Elevation="1" Class="pa-4">
+                @if (_loading)
+                {
+                    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 300px;">
+                        <MudProgressCircular Indeterminate="true" />
+                        <MudText>Loading segments...</MudText>
+                    </MudStack>
+                }
+                else if (_segments.Any())
+                {
+                    <MudGrid>
+                        @foreach (var segment in _segments.Where(s =>
+                            string.IsNullOrEmpty(_searchTerm) ||
+                            s.Name.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                            (s.Description?.Contains(_searchTerm, StringComparison.OrdinalIgnoreCase) ?? false)))
+                        {
+                            <MudItem xs="12" sm="6" md="4" lg="3">
+                                <MudCard Elevation="2" Class="segment-card">
+                                    <MudCardContent>
+                                        <MudStack Spacing="2">
+                                            <MudStack Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                                <MudText Typo="Typo.h6">@segment.Name</MudText>
+                                                <MudChip T="string" Size="Size.Small" Color="@(segment.IsActive ? Color.Success : Color.Default)">
+                                                    @segment.StatusDisplay
+                                                </MudChip>
+                                            </MudStack>
+
+                                            @if (!string.IsNullOrEmpty(segment.Description))
+                                            {
+                                                <MudText Typo="Typo.body2" Color="Color.Surface">@segment.Description</MudText>
+                                            }
+
+                                            <MudDivider />
+
+                                            <MudStack Spacing="1">
+                                                <MudStack Direction="Direction.Horizontal" AlignItems="AlignItems.Center" Spacing="1">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Small" />
+                                                    <MudText Typo="Typo.body2">@segment.MemberCountDisplay members</MudText>
+                                                </MudStack>
+
+                                                <MudStack Direction="Direction.Horizontal" AlignItems="AlignItems.Center" Spacing="1">
+                                                    <MudIcon Icon="@Icons.Material.Filled.Schedule" Size="Size.Small" />
+                                                    <MudText Typo="Typo.body2">@segment.LastRebuiltDisplay</MudText>
+                                                </MudStack>
+                                            </MudStack>
+                                        </MudStack>
+                                    </MudCardContent>
+
+                                    <MudCardActions>
+                                        <MudButton Size="Size.Small"
+                                                   Variant="Variant.Text"
+                                                   @onclick="() => ViewSegmentAsync(segment.Id)">
+                                            <MudIcon Icon="@Icons.Material.Filled.Visibility" Class="mr-1" />
+                                            View
+                                        </MudButton>
+                                        <MudButton Size="Size.Small"
+                                                   Variant="Variant.Text"
+                                                   @onclick="() => EditSegmentAsync(segment.Id)">
+                                            <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-1" />
+                                            Edit
+                                        </MudButton>
+                                        <MudButton Size="Size.Small"
+                                                   Variant="Variant.Text"
+                                                   Color="Color.Warning"
+                                                   @onclick="() => RebuildSegmentAsync(segment.Id)">
+                                            <MudIcon Icon="@Icons.Material.Filled.Refresh" Class="mr-1" />
+                                            Rebuild
+                                        </MudButton>
+                                        <MudButton Size="Size.Small"
+                                                   Variant="Variant.Text"
+                                                   Color="Color.Error"
+                                                   @onclick="() => DeleteSegmentAsync(segment)">
+                                            <MudIcon Icon="@Icons.Material.Filled.Delete" Class="mr-1" />
+                                            Delete
+                                        </MudButton>
+                                    </MudCardActions>
+                                </MudCard>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                }
+                else
+                {
+                    <MudStack AlignItems="AlignItems.Center" Justify="Justify.Center" Style="min-height: 300px;">
+                        <MudIcon Icon="@Icons.Material.Filled.Group" Size="Size.Large" Color="Color.Default" />
+                        <MudText Typo="Typo.h6" Color="Color.Surface">No segments found</MudText>
+                        <MudText Typo="Typo.body1" Color="Color.Surface">
+                            Create your first segment to get started with customer segmentation
+                        </MudText>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" @onclick="NavigateToCreate">
+                            Create Your First Segment
+                        </MudButton>
+                    </MudStack>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+</MudContainer>
+
+<style>
+    .segment-card {
+        height: 100%;
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .segment-card:hover {
+        transform: translateY(-2px);
+    }
+</style>
+
+@code {
+    private List<SegmentDto> _segments = new();
+    private string _searchTerm = string.Empty;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadSegmentsAsync();
+    }
+
+    private async Task LoadSegmentsAsync()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            _segments = await SegmentService.GetAllSegmentsAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error loading segments: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ViewSegmentAsync(Guid id)
+    {
+        NavigationManager.NavigateTo($"/segments/{id}");
+    }
+
+    private void EditSegmentAsync(Guid id)
+    {
+        NavigationManager.NavigateTo($"/segments/edit/{id}");
+    }
+
+    private async Task RebuildSegmentAsync(Guid id)
+    {
+        try
+        {
+            var result = await SegmentService.RebuildSegmentAsync(id);
+            if (result != null)
+            {
+                Snackbar.Add($"Segment rebuilt successfully. {result.MemberCount} members found.", Severity.Success);
+                await LoadSegmentsAsync(); // Refresh to update member counts
+            }
+            else
+            {
+                Snackbar.Add("Failed to rebuild segment", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error rebuilding segment: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task DeleteSegmentAsync(SegmentDto segment)
+    {
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Are you sure you want to delete the segment '{segment.Name}'? This action cannot be undone." },
+            { "ButtonText", "Delete" },
+            { "Color", Color.Error }
+        };
+
+        var options = new DialogOptions() { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall };
+
+        var dialog = DialogService.Show<DeleteConfirmationDialog>("Delete Segment", parameters, options);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                var success = await SegmentService.DeleteSegmentAsync(segment.Id);
+                if (success)
+                {
+                    Snackbar.Add($"Segment '{segment.Name}' deleted successfully", Severity.Success);
+                    await LoadSegmentsAsync();
+                }
+                else
+                {
+                    Snackbar.Add("Failed to delete segment", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting segment: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task RebuildAllSegmentsAsync()
+    {
+        try
+        {
+            var results = await SegmentService.RebuildAllSegmentsAsync();
+            if (results != null)
+            {
+                Snackbar.Add($"All segments rebuilt successfully", Severity.Success);
+                await LoadSegmentsAsync();
+            }
+            else
+            {
+                Snackbar.Add("Failed to rebuild segments", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Error rebuilding segments: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private void NavigateToCreate()
+    {
+        NavigationManager.NavigateTo("/segments/create");
+    }
+
+    private async Task ExportSegmentsAsync()
+    {
+        // TODO: Implement export functionality
+        Snackbar.Add("Export functionality coming soon", Severity.Info);
+    }
+}

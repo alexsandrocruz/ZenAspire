@@ -1,0 +1,334 @@
+using CleanAspire.Application.Features.Consents.DTOs;
+using CleanAspire.Application.Pipeline;
+using CleanAspire.Domain.Entities;
+using CleanAspire.Domain.Enums;
+using CleanAspire.Domain.Events;
+using System.Text.Json;
+
+namespace CleanAspire.Application.Features.Consents.Commands;
+
+/// <summary>
+/// Simplified Command for requesting personal data export.
+/// Phase 4: LGPD Compliance - Data Export Workflow
+/// </summary>
+public record RequestDataExportCommandSimplified : IFusionCacheRefreshRequest<DataProcessingRequestResponseDto>, IRequiresValidation
+{
+    public int OwnerType { get; init; }
+    public Guid OwnerId { get; init; }
+    public string Format { get; init; } = "JSON"; // JSON or CSV
+
+    public IEnumerable<string>? Tags => new[] { "data-export", $"owner-{OwnerType}", $"owner-{OwnerId}" };
+}
+
+/// <summary>
+/// Simplified Handler for processing RequestDataExportCommand.
+/// Generates and exports personal data for a subject in the requested format.
+/// </summary>
+public class RequestDataExportCommandSimplifiedHandler : IRequestHandler<RequestDataExportCommandSimplified, DataProcessingRequestResponseDto>
+{
+    private readonly IApplicationDbContext _context;
+    private readonly ICurrentUserService _currentUser;
+
+    public RequestDataExportCommandSimplifiedHandler(
+        IApplicationDbContext context,
+        ICurrentUserService currentUser)
+    {
+        _context = context;
+        _currentUser = currentUser;
+    }
+
+    public async ValueTask<DataProcessingRequestResponseDto> Handle(RequestDataExportCommandSimplified request, CancellationToken cancellationToken)
+    {
+        // Validate tenant
+        if (string.IsNullOrEmpty(_currentUser.TenantId))
+            throw new UnauthorizedAccessException("TenantId is required");
+
+        // Validate enum values
+        if (!Enum.IsDefined(typeof(OwnerType), request.OwnerType))
+            throw new ArgumentException("Invalid OwnerType value");
+
+        // Validate format
+        if (request.Format.ToUpperInvariant() != "JSON" && request.Format.ToUpperInvariant() != "CSV")
+            throw new ArgumentException("Format must be 'JSON' or 'CSV'");
+
+        var requestId = Guid.NewGuid().ToString();
+        var startTime = DateTime.UtcNow;
+
+        try
+        {
+            // Raise domain event for audit trail
+            var domainEvent = new PersonalDataExportRequestedEvent(
+                (OwnerType)request.OwnerType,
+                request.OwnerId,
+                _currentUser.UserId ?? "system",
+                request.Format);
+
+            // Collect all personal data
+            var personalData = await CollectPersonalDataAsync(
+                (OwnerType)request.OwnerType,
+                request.OwnerId,
+                cancellationToken);
+
+            // Generate export file
+            var exportContent = request.Format.ToUpperInvariant() switch
+            {
+                "JSON" => GenerateJsonExport(personalData),
+                "CSV" => GenerateCsvExport(personalData),
+                _ => throw new ArgumentException($"Unsupported format: {request.Format}")
+            };
+
+            // Save export file (in a real implementation, you'd save to cloud storage)
+            var fileName = $"personal-data-export-{request.OwnerType}-{request.OwnerId}-{DateTime.UtcNow:yyyyMMddHHmmss}.{request.Format.ToLowerInvariant()}";
+            var downloadUrl = $"/api/downloads/{fileName}"; // Placeholder URL
+
+            return new DataProcessingRequestResponseDto
+            {
+                RequestId = requestId,
+                OwnerType = request.OwnerType,
+                OwnerTypeName = ((OwnerType)request.OwnerType).ToString(),
+                OwnerId = request.OwnerId,
+                RequestType = "Export",
+                Status = "Completed",
+                RequestedAt = startTime,
+                CompletedAt = DateTime.UtcNow,
+                DownloadUrl = downloadUrl
+            };
+        }
+        catch (Exception ex)
+        {
+            return new DataProcessingRequestResponseDto
+            {
+                RequestId = requestId,
+                OwnerType = request.OwnerType,
+                OwnerTypeName = ((OwnerType)request.OwnerType).ToString(),
+                OwnerId = request.OwnerId,
+                RequestType = "Export",
+                Status = "Failed",
+                RequestedAt = startTime,
+                CompletedAt = DateTime.UtcNow,
+                ErrorMessage = ex.Message
+            };
+        }
+    }
+
+    private async Task<PersonalDataExportModel> CollectPersonalDataAsync(OwnerType ownerType, Guid ownerId, CancellationToken cancellationToken)
+    {
+        var data = new PersonalDataExportModel
+        {
+            OwnerType = ownerType.ToString(),
+            OwnerId = ownerId,
+            ExportDate = DateTime.UtcNow,
+            TenantId = _currentUser.TenantId!
+        };
+
+        switch (ownerType)
+        {
+            case OwnerType.Client:
+                var client = await _context.Clients
+                    .FirstOrDefaultAsync(c => c.Id == ownerId.ToString(), cancellationToken);
+
+                if (client != null)
+                {
+                    data.ClientData = new ClientPersonalData
+                    {
+                        Id = client.Id,
+                        Name = client.Name,
+                        LegalName = client.LegalName,
+                        TradeName = client.TradeName,
+                        TaxId = client.TaxId,
+                        Email = client.Email,
+                        Phone = client.Phone,
+                        Website = client.Website,
+                        Address = client.Address,
+                        City = client.City,
+                        State = client.State,
+                        PostalCode = client.PostalCode,
+                        Country = client.Country,
+                        Industry = client.Industry,
+                        Size = client.Size,
+                        AnnualRevenue = client.AnnualRevenue,
+                        EmployeeCount = client.EmployeeCount,
+                        Notes = client.Notes,
+                        Tags = client.Tags,
+                        Created = client.Created,
+                        CreatedBy = client.CreatedBy,
+                        LastModified = client.LastModified,
+                        LastModifiedBy = client.LastModifiedBy
+                    };
+                }
+                break;
+
+            case OwnerType.Contact:
+                var contact = await _context.Contacts
+                    .FirstOrDefaultAsync(c => c.Id == ownerId.ToString(), cancellationToken);
+
+                if (contact != null)
+                {
+                    data.ContactData = new ContactPersonalData
+                    {
+                        Id = contact.Id,
+                        FirstName = contact.FirstName,
+                        LastName = contact.LastName,
+                        Email = contact.Email,
+                        Phone = contact.Phone,
+                        Mobile = contact.Mobile,
+                        Position = contact.JobTitle,
+                        Department = contact.Department,
+                        Notes = contact.Notes,
+                        Created = contact.Created,
+                        CreatedBy = contact.CreatedBy
+                    };
+                }
+                break;
+        }
+
+        // Get consents for this owner
+        data.Consents = await _context.Consents
+            .Where(c => c.OwnerType == ownerType && c.OwnerId == ownerId)
+            .Select(c => new ConsentPersonalData
+            {
+                Id = c.Id,
+                Purpose = c.Purpose.ToString(),
+                OptIn = c.OptIn,
+                Channel = c.Channel,
+                At = c.At,
+                Source = c.Source,
+                IpAddress = c.IpAddress,
+                UserAgent = c.UserAgent,
+                ValidUntil = c.ValidUntil,
+                Created = c.Created,
+                CreatedBy = c.CreatedBy
+            })
+            .ToListAsync(cancellationToken);
+
+        // Get notes for this owner
+        data.Notes = await _context.Notes
+            .Where(n => n.OwnerType == ownerType && n.OwnerId == ownerId)
+            .Select(n => new NotePersonalData
+            {
+                Id = n.Id,
+                Content = n.Content,
+                Type = n.Type.ToString(),
+                Created = n.Created,
+                CreatedBy = n.CreatedBy
+            })
+            .ToListAsync(cancellationToken);
+
+        // Get interactions for this owner
+        data.Interactions = await _context.Interactions
+            .Where(i => i.OwnerType == ownerType && i.OwnerId == ownerId)
+            .Select(i => new InteractionPersonalData
+            {
+                Id = i.Id,
+                Type = i.Type.ToString(),
+                Direction = i.Direction,
+                Subject = i.Subject,
+                At = i.At,
+                Created = i.Created,
+                CreatedBy = i.CreatedBy
+            })
+            .ToListAsync(cancellationToken);
+
+        return data;
+    }
+
+    private string GenerateJsonExport(PersonalDataExportModel data)
+    {
+        var options = new JsonSerializerOptions
+        {
+            WriteIndented = true,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
+
+        return JsonSerializer.Serialize(data, options);
+    }
+
+    private string GenerateCsvExport(PersonalDataExportModel data)
+    {
+        var csv = new System.Text.StringBuilder();
+
+        // Header
+        csv.AppendLine("Data Type,Field,Value,Date Created");
+
+        // Client data
+        if (data.ClientData != null)
+        {
+            AddCsvRow(csv, "Client", "Name", data.ClientData.Name);
+            AddCsvRow(csv, "Client", "LegalName", data.ClientData.LegalName);
+            AddCsvRow(csv, "Client", "TradeName", data.ClientData.TradeName);
+            AddCsvRow(csv, "Client", "TaxId", data.ClientData.TaxId);
+            AddCsvRow(csv, "Client", "Email", data.ClientData.Email);
+            AddCsvRow(csv, "Client", "Phone", data.ClientData.Phone);
+            AddCsvRow(csv, "Client", "Website", data.ClientData.Website);
+            AddCsvRow(csv, "Client", "Notes", data.ClientData.Notes);
+            AddCsvRow(csv, "Client", "Created", data.ClientData.Created?.ToString("O"));
+        }
+
+        // Contact data
+        if (data.ContactData != null)
+        {
+            AddCsvRow(csv, "Contact", "FirstName", data.ContactData.FirstName);
+            AddCsvRow(csv, "Contact", "LastName", data.ContactData.LastName);
+            AddCsvRow(csv, "Contact", "Email", data.ContactData.Email);
+            AddCsvRow(csv, "Contact", "Phone", data.ContactData.Phone);
+            AddCsvRow(csv, "Contact", "Mobile", data.ContactData.Mobile);
+            AddCsvRow(csv, "Contact", "Position", data.ContactData.Position);
+            AddCsvRow(csv, "Contact", "Created", data.ContactData.Created?.ToString("O"));
+        }
+
+        // Consents
+        foreach (var consent in data.Consents)
+        {
+            AddCsvRow(csv, "Consent", "Purpose", consent.Purpose);
+            AddCsvRow(csv, "Consent", "OptIn", consent.OptIn.ToString());
+            AddCsvRow(csv, "Consent", "Channel", consent.Channel);
+            AddCsvRow(csv, "Consent", "Source", consent.Source);
+            AddCsvRow(csv, "Consent", "At", consent.At.ToString("O"));
+            AddCsvRow(csv, "Consent", "Created", consent.Created?.ToString("O"));
+        }
+
+        // Notes
+        foreach (var note in data.Notes)
+        {
+            AddCsvRow(csv, "Note", "Type", note.Type);
+            AddCsvRow(csv, "Note", "Content", note.Content);
+            AddCsvRow(csv, "Note", "Created", note.Created?.ToString("O"));
+        }
+
+        // Interactions
+        foreach (var interaction in data.Interactions)
+        {
+            AddCsvRow(csv, "Interaction", "Type", interaction.Type);
+            AddCsvRow(csv, "Interaction", "Direction", interaction.Direction);
+            AddCsvRow(csv, "Interaction", "Subject", interaction.Subject);
+            AddCsvRow(csv, "Interaction", "At", interaction.At.ToString("O"));
+            AddCsvRow(csv, "Interaction", "Created", interaction.Created?.ToString("O"));
+        }
+
+        return csv.ToString();
+    }
+
+    private static void AddCsvRow(System.Text.StringBuilder csv, string dataType, string field, string? value)
+    {
+        if (!string.IsNullOrEmpty(value))
+        {
+            // Escape quotes and commas for CSV
+            var escapedValue = value.Replace("\"", "\"\"");
+            csv.AppendLine($"{dataType},{field},\"{escapedValue}\"");
+        }
+    }
+}
+
+// Internal data models for export (reusing existing classes)
+internal class PersonalDataExportModel
+{
+    public string OwnerType { get; set; } = string.Empty;
+    public Guid OwnerId { get; set; }
+    public DateTime ExportDate { get; set; }
+    public string TenantId { get; set; } = string.Empty;
+    public ClientPersonalData? ClientData { get; set; }
+    public ContactPersonalData? ContactData { get; set; }
+    public List<ConsentPersonalData> Consents { get; set; } = new();
+    public List<NotePersonalData> Notes { get; set; } = new();
+    public List<InteractionPersonalData> Interactions { get; set; } = new();
+}

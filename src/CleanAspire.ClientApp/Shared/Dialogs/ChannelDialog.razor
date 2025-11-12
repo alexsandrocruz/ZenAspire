@@ -1,0 +1,424 @@
+@inject ISnackbar Snackbar
+@using System.Text.RegularExpressions
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@GetChannelIcon(_model.Type)" Class="mr-3" />
+            @(Channel != null ? "Edit Channel" : "New Channel")
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudForm @ref="_form" @bind-IsValid="@_success" @bind-Errors="@_errors">
+            <MudStack Spacing="3">
+                <!-- Channel Type -->
+                <MudSelect T="ChannelType"
+                           Value="_model.Type"
+                           ValueChanged="OnChannelTypeChanged"
+                           Label="Channel Type *"
+                           Required="true"
+                           RequiredError="Channel type is required"
+                           Variant="Variant.Outlined">
+                    @foreach (ChannelType type in Enum.GetValues(typeof(ChannelType)))
+                    {
+                        <MudSelectItem Value="@type">
+                            <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                                <MudIcon Icon="@GetChannelIcon(type)" Size="Size.Small" />
+                                <MudText>@GetChannelTypeName(type)</MudText>
+                            </MudStack>
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+
+                <!-- Value (dynamically changes based on type) -->
+                <MudTextField T="string"
+                              @bind-Value="_model.Value"
+                              Label="@($"{GetChannelValueLabel()} *")"
+                              Required="true"
+                              RequiredError="@($"{GetChannelValueLabel()} is required")"
+                              MaxLength="256"
+                              Variant="Variant.Outlined"
+                              Placeholder="@GetChannelPlaceholder()"
+                              InputType="@GetInputType()"
+                              Validation="@(new Func<string, string?>(ValidateChannelValue))" />
+
+                <!-- Label -->
+                <MudTextField T="string"
+                              @bind-Value="_model.Label"
+                              Label="Label"
+                              Variant="Variant.Outlined"
+                              Placeholder="e.g., Work, Personal, Main"
+                              HelperText="Optional: Give this channel a label" />
+
+                <!-- Primary Channel Switch -->
+                <MudSwitch T="bool"
+                           @bind-Checked="_model.IsPrimary"
+                           Color="Color.Primary"
+                           Label="Set as primary channel"
+                           UnCheckedColor="Color.Default">
+                    <MudIcon Icon="@Icons.Material.Filled.Star" Size="Size.Small" Class="mr-2" />
+                </MudSwitch>
+
+                @if (_model.IsPrimary)
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Icon="@Icons.Material.Filled.Info">
+                        This will be set as the default @GetChannelTypeName(_model.Type).ToLower() for this entity
+                    </MudAlert>
+                }
+
+                <!-- Opted In Switch (for marketing channels) -->
+                @if (IsMarketingChannel(_model.Type))
+                {
+                    <MudSwitch T="bool"
+                               @bind-Checked="_model.OptedIn"
+                               Color="Color.Success"
+                               Label="Opted in to receive communications"
+                               UnCheckedColor="Color.Default">
+                        <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Size="Size.Small" Class="mr-2" />
+                    </MudSwitch>
+
+                    @if (!_model.OptedIn)
+                    {
+                        <MudAlert Severity="Severity.Warning" Dense="true" Icon="@Icons.Material.Filled.Warning">
+                            This contact has not opted in to receive communications via this channel
+                        </MudAlert>
+                    }
+                }
+
+                @if (_errors?.Length > 0)
+                {
+                    <MudAlert Severity="Severity.Error" Dense="true">
+                        @foreach (var error in _errors)
+                        {
+                            <MudText Typo="Typo.body2">@error</MudText>
+                        }
+                    </MudAlert>
+                }
+            </MudStack>
+        </MudForm>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Primary" OnClick="Submit" Disabled="@(!_success || _isSubmitting)">
+            @if (_isSubmitting)
+            {
+                <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+            }
+            Save
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    /// <summary>
+    /// Cascading parameter for MudDialog instance
+    /// </summary>
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; } = default!;
+
+    /// <summary>
+    /// Channel to edit. If null, creates a new channel.
+    /// </summary>
+    [Parameter]
+    public ChannelDto? Channel { get; set; }
+
+    /// <summary>
+    /// Required for create mode: Type of entity this channel belongs to
+    /// </summary>
+    [Parameter]
+    public OwnerType OwnerType { get; set; }
+
+    /// <summary>
+    /// Required for create mode: ID of the entity this channel belongs to
+    /// </summary>
+    [Parameter]
+    public Guid OwnerId { get; set; }
+
+    private MudForm? _form;
+    private bool _success = false;
+    private string[] _errors = Array.Empty<string>();
+    private bool _isSubmitting = false;
+    private ChannelRequest _model = new();
+
+    protected override void OnInitialized()
+    {
+        if (Channel != null)
+        {
+            // Edit mode - populate from existing channel
+            _model = new ChannelRequest
+            {
+                OwnerType = Channel.OwnerType,
+                OwnerId = Channel.OwnerId,
+                Type = Channel.Type,
+                Value = Channel.Value,
+                IsPrimary = Channel.IsPrimary,
+                Label = Channel.Label,
+                OptedIn = Channel.OptedIn
+            };
+        }
+        else
+        {
+            // Create mode - set defaults
+            _model.OwnerType = OwnerType;
+            _model.OwnerId = OwnerId;
+            _model.Type = ChannelType.Email; // Default to Email
+            _model.IsPrimary = false;
+            _model.OptedIn = true; // Default opt-in
+        }
+    }
+
+    /// <summary>
+    /// Handles channel type changes to reset value field
+    /// </summary>
+    private void OnChannelTypeChanged(ChannelType newType)
+    {
+        _model.Type = newType;
+        _model.Value = string.Empty; // Reset value when type changes
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Validates and submits the channel form
+    /// </summary>
+    private async Task Submit()
+    {
+        if (_form == null || !_form.IsValid)
+        {
+            Snackbar.Add("Please correct the validation errors", Severity.Error);
+            return;
+        }
+
+        // Additional validation
+        if (string.IsNullOrWhiteSpace(_model.Value))
+        {
+            Snackbar.Add($"{GetChannelValueLabel()} is required", Severity.Error);
+            return;
+        }
+
+        var validationError = ValidateChannelValue(_model.Value);
+        if (!string.IsNullOrEmpty(validationError))
+        {
+            Snackbar.Add(validationError, Severity.Error);
+            return;
+        }
+
+        _isSubmitting = true;
+        StateHasChanged();
+
+        try
+        {
+            // Return the request model to the caller
+            MudDialog.Close(DialogResult.Ok(_model));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"An error occurred: {ex.Message}", Severity.Error);
+            _isSubmitting = false;
+        }
+    }
+
+    /// <summary>
+    /// Cancels the dialog
+    /// </summary>
+    private void Cancel()
+    {
+        MudDialog.Cancel();
+    }
+
+    /// <summary>
+    /// Gets the appropriate label for the value field based on channel type
+    /// </summary>
+    private string GetChannelValueLabel() => _model.Type switch
+    {
+        ChannelType.Email => "Email Address",
+        ChannelType.Phone => "Phone Number",
+        ChannelType.Mobile => "Mobile Number",
+        ChannelType.WhatsApp => "WhatsApp Number",
+        ChannelType.Website => "Website URL",
+        ChannelType.Instagram => "Instagram Handle",
+        ChannelType.LinkedIn => "LinkedIn Profile URL",
+        ChannelType.Facebook => "Facebook Profile/Page",
+        ChannelType.Twitter => "Twitter/X Handle",
+        ChannelType.Telegram => "Telegram Username",
+        ChannelType.Skype => "Skype ID",
+        ChannelType.Other => "Channel Value",
+        _ => "Value"
+    };
+
+    /// <summary>
+    /// Gets the appropriate placeholder for the value field based on channel type
+    /// </summary>
+    private string GetChannelPlaceholder() => _model.Type switch
+    {
+        ChannelType.Email => "example@company.com",
+        ChannelType.Phone => "+55 11 1234-5678",
+        ChannelType.Mobile => "+55 11 91234-5678",
+        ChannelType.WhatsApp => "+55 11 91234-5678",
+        ChannelType.Website => "https://www.example.com",
+        ChannelType.Instagram => "@username or https://instagram.com/username",
+        ChannelType.LinkedIn => "https://linkedin.com/in/username",
+        ChannelType.Facebook => "facebook.com/username or @username",
+        ChannelType.Twitter => "@username",
+        ChannelType.Telegram => "@username",
+        ChannelType.Skype => "username",
+        ChannelType.Other => "Enter value",
+        _ => "Enter value"
+    };
+
+    /// <summary>
+    /// Gets the input type for the value field
+    /// </summary>
+    private InputType GetInputType() => _model.Type switch
+    {
+        ChannelType.Email => InputType.Email,
+        ChannelType.Phone => InputType.Telephone,
+        ChannelType.Mobile => InputType.Telephone,
+        ChannelType.WhatsApp => InputType.Telephone,
+        ChannelType.Website => InputType.Url,
+        ChannelType.LinkedIn => InputType.Url,
+        _ => InputType.Text
+    };
+
+    /// <summary>
+    /// Validates channel value based on type
+    /// </summary>
+    private string? ValidateChannelValue(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null; // Required validation is handled separately
+
+        return _model.Type switch
+        {
+            ChannelType.Email => ValidateEmail(value),
+            ChannelType.Phone or ChannelType.Mobile or ChannelType.WhatsApp => ValidatePhone(value),
+            ChannelType.Website or ChannelType.LinkedIn => ValidateUrl(value),
+            ChannelType.Instagram or ChannelType.Twitter or ChannelType.Telegram => ValidateHandle(value),
+            _ => null
+        };
+    }
+
+    /// <summary>
+    /// Validates email format
+    /// </summary>
+    private string? ValidateEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return null;
+
+        var emailRegex = new Regex(@"^[^@\s]+@[^@\s]+\.[^@\s]+$");
+        if (!emailRegex.IsMatch(email))
+            return "Invalid email format";
+
+        return null;
+    }
+
+    /// <summary>
+    /// Validates phone number format (allows international format)
+    /// </summary>
+    private string? ValidatePhone(string phone)
+    {
+        if (string.IsNullOrWhiteSpace(phone))
+            return null;
+
+        // Remove spaces, dashes, and parentheses for validation
+        var cleanPhone = Regex.Replace(phone, @"[\s\-\(\)]", "");
+
+        // Must start with + or digit and be at least 8 characters
+        if (!Regex.IsMatch(cleanPhone, @"^[\+]?[0-9]{8,}$"))
+            return "Invalid phone number format. Use international format (e.g., +55 11 91234-5678)";
+
+        return null;
+    }
+
+    /// <summary>
+    /// Validates URL format
+    /// </summary>
+    private string? ValidateUrl(string url)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+            return null;
+
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uriResult) ||
+            (uriResult.Scheme != Uri.UriSchemeHttp && uriResult.Scheme != Uri.UriSchemeHttps))
+        {
+            return "Invalid URL format. Must start with http:// or https://";
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Validates social media handle format
+    /// </summary>
+    private string? ValidateHandle(string handle)
+    {
+        if (string.IsNullOrWhiteSpace(handle))
+            return null;
+
+        // Allow @username or just username or full URL
+        var cleanHandle = handle.Trim();
+        if (cleanHandle.StartsWith("http://") || cleanHandle.StartsWith("https://"))
+            return null; // Allow full URLs
+
+        // Remove @ if present
+        cleanHandle = cleanHandle.TrimStart('@');
+
+        // Must be alphanumeric with underscores
+        if (!Regex.IsMatch(cleanHandle, @"^[a-zA-Z0-9_\.]+$"))
+            return "Invalid handle format. Use @username or username";
+
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the Material Design icon for a channel type
+    /// </summary>
+    private string GetChannelIcon(ChannelType type) => type switch
+    {
+        ChannelType.Email => Icons.Material.Filled.Email,
+        ChannelType.Phone => Icons.Material.Filled.Phone,
+        ChannelType.Mobile => Icons.Material.Filled.Smartphone,
+        ChannelType.WhatsApp => Icons.Material.Filled.Chat,
+        ChannelType.Website => Icons.Material.Filled.Language,
+        ChannelType.Instagram => Icons.Material.Filled.CameraAlt,
+        ChannelType.LinkedIn => Icons.Material.Filled.BusinessCenter,
+        ChannelType.Facebook => Icons.Material.Filled.Group,
+        ChannelType.Twitter => Icons.Material.Filled.Message,
+        ChannelType.Telegram => Icons.Material.Filled.Send,
+        ChannelType.Skype => Icons.Material.Filled.Videocam,
+        ChannelType.Other => Icons.Material.Filled.ContactPage,
+        _ => Icons.Material.Filled.ContactMail
+    };
+
+    /// <summary>
+    /// Gets user-friendly name for channel type
+    /// </summary>
+    private string GetChannelTypeName(ChannelType type) => type switch
+    {
+        ChannelType.Email => "Email",
+        ChannelType.Phone => "Phone",
+        ChannelType.Mobile => "Mobile",
+        ChannelType.WhatsApp => "WhatsApp",
+        ChannelType.Website => "Website",
+        ChannelType.Instagram => "Instagram",
+        ChannelType.LinkedIn => "LinkedIn",
+        ChannelType.Facebook => "Facebook",
+        ChannelType.Twitter => "Twitter/X",
+        ChannelType.Telegram => "Telegram",
+        ChannelType.Skype => "Skype",
+        ChannelType.Other => "Other",
+        _ => type.ToString()
+    };
+
+    /// <summary>
+    /// Determines if a channel type is a marketing channel
+    /// </summary>
+    private bool IsMarketingChannel(ChannelType type) => type switch
+    {
+        ChannelType.Email => true,
+        ChannelType.Mobile => true,
+        ChannelType.WhatsApp => true,
+        ChannelType.Telegram => true,
+        _ => false
+    };
+}

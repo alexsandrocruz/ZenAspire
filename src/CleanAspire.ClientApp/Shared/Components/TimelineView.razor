@@ -1,0 +1,556 @@
+@using System.Net.Http.Json
+@using CleanAspire.ClientApp.DTOs
+
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<MudPaper Class="pa-4" Elevation="2">
+    <!-- Header -->
+    <MudStack Row Spacing="2" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+        <MudStack Row AlignItems="AlignItems.Center" Spacing="2">
+            <MudIcon Icon="@Icons.Material.Filled.Timeline" />
+            <MudText Typo="Typo.h6">@Title</MudText>
+        </MudStack>
+        @if (ShowFilters)
+        {
+            <MudIconButton Icon="@(filtersExpanded ? Icons.Material.Filled.ExpandLess : Icons.Material.Filled.ExpandMore)"
+                           OnClick="ToggleFilters"
+                           Size="Size.Small"
+                           Title="@L["Toggle Filters"]" />
+        }
+    </MudStack>
+
+    <!-- Filters (Collapsible) -->
+    @if (ShowFilters && filtersExpanded)
+    {
+        <MudPaper Class="pa-3 mb-4" Elevation="0" Outlined="true">
+            <MudGrid Spacing="2">
+                <MudItem xs="12" md="4">
+                    <MudSelect T="int?"
+                               @bind-Value="_typeFilter"
+                               Label="@L["Type Filter"]"
+                               Clearable="true"
+                               OnValueChanged="OnFilterChanged"
+                               Dense="true">
+                        <MudSelectItem Value="@((int?)null)">@L["All Types"]</MudSelectItem>
+                        <MudSelectItem Value="@((int?)1)">@L["Activities"]</MudSelectItem>
+                        <MudSelectItem Value="@((int?)2)">@L["Interactions"]</MudSelectItem>
+                        <MudSelectItem Value="@((int?)3)">@L["Notes"]</MudSelectItem>
+                    </MudSelect>
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudDatePicker @bind-Date="_startDate"
+                                   Label="@L["Start Date"]"
+                                   Clearable="true"
+                                   OnValueChanged="OnFilterChanged"
+                                   Dense="true" />
+                </MudItem>
+                <MudItem xs="12" md="4">
+                    <MudDatePicker @bind-Date="_endDate"
+                                   Label="@L["End Date"]"
+                                   Clearable="true"
+                                   OnValueChanged="OnFilterChanged"
+                                   Dense="true" />
+                </MudItem>
+            </MudGrid>
+            <MudStack Row Spacing="1" Class="mt-2">
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(IsQuickFilterActive(QuickFilter.Today) ? Color.Primary : Color.Default)"
+                         OnClick="() => SetQuickFilter(QuickFilter.Today)">
+                    @L["Today"]
+                </MudChip>
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(IsQuickFilterActive(QuickFilter.ThisWeek) ? Color.Primary : Color.Default)"
+                         OnClick="() => SetQuickFilter(QuickFilter.ThisWeek)">
+                    @L["This Week"]
+                </MudChip>
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(IsQuickFilterActive(QuickFilter.ThisMonth) ? Color.Primary : Color.Default)"
+                         OnClick="() => SetQuickFilter(QuickFilter.ThisMonth)">
+                    @L["This Month"]
+                </MudChip>
+                <MudChip T="string" Size="Size.Small"
+                         Color="@(IsQuickFilterActive(QuickFilter.AllTime) ? Color.Primary : Color.Default)"
+                         OnClick="() => SetQuickFilter(QuickFilter.AllTime)">
+                    @L["All Time"]
+                </MudChip>
+            </MudStack>
+        </MudPaper>
+    }
+
+    <!-- Timeline Content -->
+    <div style="max-height: @MaxHeight; overflow-y: auto;">
+        @if (_loading && !_timelineItems.Any())
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-8">
+                <MudProgressCircular Indeterminate="true" />
+                <MudText Typo="Typo.body2">@L["Loading timeline..."]</MudText>
+            </MudStack>
+        }
+        else if (_error != null)
+        {
+            <MudAlert Severity="Severity.Error" Class="mb-4">
+                @L["Error loading timeline: {0}", _error]
+            </MudAlert>
+        }
+        else if (!_timelineItems.Any())
+        {
+            <MudStack AlignItems="AlignItems.Center" Class="py-8">
+                <MudIcon Icon="@Icons.Material.Outlined.Timeline" Size="Size.Large" Color="Color.Default" />
+                <MudText Typo="Typo.h6">@L["No timeline items found"]</MudText>
+                <MudText Typo="Typo.body2" Color="Color.Default">
+                    @L["Timeline items will appear here as they are created"]
+                </MudText>
+            </MudStack>
+        }
+        else
+        {
+            <MudTimeline TimelineOrientation="TimelineOrientation.Vertical"
+                         TimelinePosition="TimelinePosition.Start"
+                         TimelineAlign="TimelineAlign.Default">
+                @foreach (var item in _timelineItems)
+                {
+                    <MudTimelineItem Color="@GetTimelineColor(item)"
+                                     Size="Size.Small"
+                                     Elevation="0">
+                        <ItemOpposite>
+                            <MudText Typo="Typo.body2" Color="Color.Default">
+                                @GetRelativeTime(item.Date)
+                            </MudText>
+                        </ItemOpposite>
+                        <ItemContent>
+                            <MudPaper Class="pa-3 mb-2" Elevation="1">
+                                <MudStack Spacing="1">
+                                    <!-- Header with Icon and Badge -->
+                                    <MudStack Row Spacing="2" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Start">
+                                        <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                            <MudIcon Icon="@GetIconForItem(item)" Size="Size.Small" Color="@GetTimelineColor(item)" />
+                                            <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">
+                                                @item.Title
+                                            </MudText>
+                                        </MudStack>
+                                        @if (!string.IsNullOrEmpty(item.Badge))
+                                        {
+                                            <MudChip T="string" Size="Size.Small" Color="@GetChipColor(item)">
+                                                @item.Badge
+                                            </MudChip>
+                                        }
+                                    </MudStack>
+
+                                    <!-- Description -->
+                                    @if (!string.IsNullOrEmpty(item.Description))
+                                    {
+                                        <MudText Typo="Typo.body2" Color="Color.Default">
+                                            @item.Description
+                                        </MudText>
+                                    }
+
+                                    <!-- Metadata Row -->
+                                    <MudStack Row Spacing="3" AlignItems="AlignItems.Center" Class="mt-1">
+                                        <!-- Type Badge -->
+                                        <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                            <MudIcon Icon="@Icons.Material.Filled.Label" Size="Size.Small" />
+                                            <MudText Typo="Typo.caption">@item.TypeName</MudText>
+                                        </MudStack>
+
+                                        <!-- User -->
+                                        @if (!string.IsNullOrEmpty(item.User) || !string.IsNullOrEmpty(item.CreatedBy))
+                                        {
+                                            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                                <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Small" />
+                                                <MudText Typo="Typo.caption">@(item.User ?? item.CreatedBy)</MudText>
+                                            </MudStack>
+                                        }
+
+                                        <!-- Duration -->
+                                        @if (item.Duration.HasValue)
+                                        {
+                                            <MudStack Row Spacing="1" AlignItems="AlignItems.Center">
+                                                <MudIcon Icon="@Icons.Material.Filled.AccessTime" Size="Size.Small" />
+                                                <MudText Typo="Typo.caption">@FormatDuration(item)</MudText>
+                                            </MudStack>
+                                        }
+
+                                        <!-- Pinned Indicator -->
+                                        @if (item.IsPinned)
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.PushPin" Size="Size.Small" Color="Color.Warning" Title="@L["Pinned"]" />
+                                        }
+
+                                        <!-- Private Indicator -->
+                                        @if (item.IsPrivate)
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Lock" Size="Size.Small" Color="Color.Default" Title="@L["Private"]" />
+                                        }
+                                    </MudStack>
+                                </MudStack>
+                            </MudPaper>
+                        </ItemContent>
+                    </MudTimelineItem>
+                }
+            </MudTimeline>
+
+            <!-- Load More Button -->
+            @if (_hasMorePages)
+            {
+                <MudStack AlignItems="AlignItems.Center" Class="mt-4">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               OnClick="LoadMore"
+                               Disabled="@_loading">
+                        @if (_loading)
+                        {
+                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="me-2" />
+                        }
+                        @L["Load More"]
+                    </MudButton>
+                </MudStack>
+            }
+        }
+    </div>
+</MudPaper>
+
+@code {
+    /// <summary>
+    /// Type of entity (Client, Contact, etc.) - Required
+    /// </summary>
+    [Parameter, EditorRequired]
+    public OwnerType OwnerType { get; set; }
+
+    /// <summary>
+    /// ID of the entity - Required
+    /// </summary>
+    [Parameter, EditorRequired]
+    public Guid OwnerId { get; set; }
+
+    /// <summary>
+    /// Timeline section title (default: "Timeline")
+    /// </summary>
+    [Parameter]
+    public string Title { get; set; } = "Timeline";
+
+    /// <summary>
+    /// Show/hide filters (default: true)
+    /// </summary>
+    [Parameter]
+    public bool ShowFilters { get; set; } = true;
+
+    /// <summary>
+    /// Items per page (default: 20)
+    /// </summary>
+    [Parameter]
+    public int PageSize { get; set; } = 20;
+
+    /// <summary>
+    /// CSS max-height for timeline container (default: "600px")
+    /// </summary>
+    [Parameter]
+    public string MaxHeight { get; set; } = "600px";
+
+    // State
+    private List<TimelineItemDto> _timelineItems = new();
+    private bool _loading = false;
+    private string? _error = null;
+    private int _currentPage = 1;
+    private int _totalCount = 0;
+    private bool _hasMorePages = false;
+    private bool filtersExpanded = true;
+
+    // Filter state
+    private int? _typeFilter = null;
+    private DateTime? _startDate = null;
+    private DateTime? _endDate = null;
+    private QuickFilter? _activeQuickFilter = QuickFilter.AllTime;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Reset when parameters change
+        _timelineItems.Clear();
+        _currentPage = 1;
+        _error = null;
+
+        await LoadTimelineData();
+    }
+
+    /// <summary>
+    /// Loads timeline data from the API
+    /// </summary>
+    private async Task LoadTimelineData()
+    {
+        _loading = true;
+        StateHasChanged();
+
+        try
+        {
+            var endpoint = GetApiEndpoint();
+            var queryParams = BuildQueryParams();
+            var url = $"{endpoint}?{queryParams}";
+
+            var response = await Http.GetAsync(url);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                _error = $"API returned {response.StatusCode}";
+                return;
+            }
+
+            var result = await response.Content.ReadFromJsonAsync<PaginatedResult<TimelineItemDto>>();
+
+            if (result != null)
+            {
+                _timelineItems.AddRange(result.Items ?? Enumerable.Empty<TimelineItemDto>());
+                _totalCount = result.TotalCount;
+                _hasMorePages = result.PageNumber < result.TotalPages;
+            }
+
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add(L["Error loading timeline: {0}", ex.Message], Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Loads the next page of timeline data
+    /// </summary>
+    private async Task LoadMore()
+    {
+        _currentPage++;
+        await LoadTimelineData();
+    }
+
+    /// <summary>
+    /// Gets the API endpoint based on OwnerType
+    /// </summary>
+    private string GetApiEndpoint()
+    {
+        return OwnerType switch
+        {
+            OwnerType.Client => $"/api/crm/clients/{OwnerId}/timeline",
+            OwnerType.Contact => $"/api/crm/contacts/{OwnerId}/timeline",
+            _ => throw new NotSupportedException($"OwnerType {OwnerType} is not supported for timeline")
+        };
+    }
+
+    /// <summary>
+    /// Builds query string parameters for API call
+    /// </summary>
+    private string BuildQueryParams()
+    {
+        var queryParams = new List<string>
+        {
+            $"pageNumber={_currentPage}",
+            $"pageSize={PageSize}"
+        };
+
+        if (_typeFilter.HasValue)
+        {
+            queryParams.Add($"typeFilter={_typeFilter.Value}");
+        }
+
+        if (_startDate.HasValue)
+        {
+            queryParams.Add($"startDate={_startDate.Value:yyyy-MM-dd}");
+        }
+
+        if (_endDate.HasValue)
+        {
+            queryParams.Add($"endDate={_endDate.Value:yyyy-MM-dd}");
+        }
+
+        return string.Join("&", queryParams);
+    }
+
+    /// <summary>
+    /// Handles filter changes and reloads data
+    /// </summary>
+    private async Task OnFilterChanged()
+    {
+        _timelineItems.Clear();
+        _currentPage = 1;
+        _activeQuickFilter = null;
+        await LoadTimelineData();
+    }
+
+    /// <summary>
+    /// Toggles filter panel visibility
+    /// </summary>
+    private void ToggleFilters()
+    {
+        filtersExpanded = !filtersExpanded;
+        StateHasChanged();
+    }
+
+    /// <summary>
+    /// Sets a quick filter (Today, This Week, etc.)
+    /// </summary>
+    private async Task SetQuickFilter(QuickFilter filter)
+    {
+        _activeQuickFilter = filter;
+        _typeFilter = null;
+
+        var now = DateTime.UtcNow;
+
+        switch (filter)
+        {
+            case QuickFilter.Today:
+                _startDate = now.Date;
+                _endDate = now.Date.AddDays(1).AddTicks(-1);
+                break;
+
+            case QuickFilter.ThisWeek:
+                var startOfWeek = now.Date.AddDays(-(int)now.DayOfWeek);
+                _startDate = startOfWeek;
+                _endDate = startOfWeek.AddDays(7).AddTicks(-1);
+                break;
+
+            case QuickFilter.ThisMonth:
+                _startDate = new DateTime(now.Year, now.Month, 1);
+                _endDate = _startDate.Value.AddMonths(1).AddTicks(-1);
+                break;
+
+            case QuickFilter.AllTime:
+                _startDate = null;
+                _endDate = null;
+                break;
+        }
+
+        _timelineItems.Clear();
+        _currentPage = 1;
+        await LoadTimelineData();
+    }
+
+    /// <summary>
+    /// Checks if a quick filter is currently active
+    /// </summary>
+    private bool IsQuickFilterActive(QuickFilter filter)
+    {
+        return _activeQuickFilter == filter;
+    }
+
+    /// <summary>
+    /// Gets the MudBlazor icon for a timeline item
+    /// </summary>
+    private string GetIconForItem(TimelineItemDto item)
+    {
+        return item.Icon.ToLowerInvariant() switch
+        {
+            "email" => Icons.Material.Filled.Email,
+            "phone" => Icons.Material.Filled.Phone,
+            "whatsapp" => Icons.Material.Filled.Chat, // MudBlazor doesn't have WhatsApp, using Chat
+            "meeting" => Icons.Material.Filled.Event,
+            "task" => Icons.Material.Filled.Task,
+            "note" => Icons.Material.Filled.StickyNote2,
+            "sms" => Icons.Material.Filled.Sms,
+            "video" => Icons.Material.Filled.VideoCall,
+            "event" => Icons.Material.Filled.CalendarToday,
+            "chat" => Icons.Material.Filled.Chat,
+            "instagram" => Icons.Material.Filled.Public,
+            "facebook" => Icons.Material.Filled.Public,
+            "linkedin" => Icons.Material.Filled.Public,
+            "twitter" => Icons.Material.Filled.Public,
+            "interaction" => Icons.Material.Filled.Forum,
+            "activity" => Icons.Material.Filled.Assignment,
+            _ => Icons.Material.Filled.FiberManualRecord
+        };
+    }
+
+    /// <summary>
+    /// Gets the timeline item color based on color hint
+    /// </summary>
+    private Color GetTimelineColor(TimelineItemDto item)
+    {
+        return (item.ColorHint?.ToLowerInvariant()) switch
+        {
+            "success" => Color.Success,
+            "info" => Color.Info,
+            "warning" => Color.Warning,
+            "error" => Color.Error,
+            "primary" => Color.Primary,
+            "secondary" => Color.Secondary,
+            _ => Color.Default
+        };
+    }
+
+    /// <summary>
+    /// Gets the chip color for badges
+    /// </summary>
+    private Color GetChipColor(TimelineItemDto item)
+    {
+        // Use the same logic as timeline color
+        return GetTimelineColor(item);
+    }
+
+    /// <summary>
+    /// Formats a relative time string (e.g., "2 hours ago")
+    /// </summary>
+    private string GetRelativeTime(DateTime date)
+    {
+        var timeSpan = DateTime.UtcNow - date;
+
+        if (timeSpan.TotalSeconds < 60)
+            return L["Just now"];
+
+        if (timeSpan.TotalMinutes < 60)
+            return L["{0} minutes ago", (int)timeSpan.TotalMinutes];
+
+        if (timeSpan.TotalHours < 24)
+            return L["{0} hours ago", (int)timeSpan.TotalHours];
+
+        if (timeSpan.TotalDays < 7)
+            return L["{0} days ago", (int)timeSpan.TotalDays];
+
+        if (timeSpan.TotalDays < 30)
+            return L["{0} weeks ago", (int)(timeSpan.TotalDays / 7)];
+
+        if (timeSpan.TotalDays < 365)
+            return L["{0} months ago", (int)(timeSpan.TotalDays / 30)];
+
+        // For older dates, show absolute date
+        return date.ToString("MMM d, yyyy");
+    }
+
+    /// <summary>
+    /// Formats duration for display
+    /// </summary>
+    private string FormatDuration(TimelineItemDto item)
+    {
+        if (!item.Duration.HasValue)
+            return string.Empty;
+
+        // For interactions, duration is in seconds
+        if (item.Type == TimelineItemType.Interaction)
+        {
+            var seconds = item.Duration.Value;
+            if (seconds < 60)
+                return L["{0} sec", seconds];
+            if (seconds < 3600)
+                return L["{0} min", seconds / 60];
+            return L["{0} hr {1} min", seconds / 3600, (seconds % 3600) / 60];
+        }
+
+        // For activities, duration is in minutes
+        var minutes = item.Duration.Value;
+        if (minutes < 60)
+            return L["{0} min", minutes];
+        return L["{0} hr {1} min", minutes / 60, minutes % 60];
+    }
+
+    /// <summary>
+    /// Quick filter options
+    /// </summary>
+    private enum QuickFilter
+    {
+        Today,
+        ThisWeek,
+        ThisMonth,
+        AllTime
+    }
+}

@@ -1,0 +1,357 @@
+@page "/lgpd/consents/new"
+@layout ApplicationLayout
+@inject NavigationManager Navigation
+@inject HttpClient Http
+
+<PageTitle>Record New Consent</PageTitle>
+
+<style>
+    .consent-form {
+        max-width: 800px;
+    }
+    .purpose-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .purpose-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    }
+    .purpose-card.selected {
+        border: 2px solid;
+    }
+</style>
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="consent-form">
+    <MudPaper Elevation="2" Class="pa-6">
+        <MudStack Spacing="4">
+            <!-- Header -->
+            <MudStack Spacing="2">
+                <MudText Typo="Typo.h4">
+                    <MudIcon Icon="@Icons.Material.Filled.AddCircle" Class="mr-2" />
+                    Record New Consent
+                </MudText>
+                <MudText Typo="Typo.body1" Color="Color.Secondary">
+                    Record explicit consent for data processing activities in compliance with LGPD regulations.
+                </MudText>
+            </MudStack>
+
+            <MudDivider />
+
+            <EditForm Model="@consentForm" OnValidSubmit="HandleSubmit">
+                <!-- Owner Selection -->
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6">1. Select Data Subject</MudText>
+
+                    <MudSelect T="int" Label="Owner Type" @bind-Value="consentForm.OwnerType" Required="true">
+                        <MudSelectItem T="int" Value="1">Client</MudSelectItem>
+                        <MudSelectItem T="int" Value="2">Contact</MudSelectItem>
+                    </MudSelect>
+
+                    @if (consentForm.OwnerType == 1)
+                    {
+                        <MudSelect T="string" Label="Select Client" @bind-Value="consentForm.OwnerIdString" Required="true">
+                            @if (clients.Any())
+                            {
+                                @foreach (var client in clients)
+                                {
+                                    <MudSelectItem T="string" Value="@client.Id">@client.Name</MudSelectItem>
+                                }
+                            }
+                            else
+                            {
+                                <MudSelectItem T="string" Value="@EMPTY" Disabled="true">No clients available</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                    else if (consentForm.OwnerType == 2)
+                    {
+                        <MudSelect T="string" Label="Select Contact" @bind-Value="consentForm.OwnerIdString" Required="true">
+                            @if (contacts.Any())
+                            {
+                                @foreach (var contact in contacts)
+                                {
+                                    <MudSelectItem T="string" Value="@contact.Id">@contact.FirstName @contact.LastName</MudSelectItem>
+                                }
+                            }
+                            else
+                            {
+                                <MudSelectItem T="string" Value="@EMPTY" Disabled="true">No contacts available</MudSelectItem>
+                            }
+                        </MudSelect>
+                    }
+                </MudStack>
+
+                <MudDivider />
+
+                <!-- Consent Purpose -->
+                <MudStack Spacing="2">
+                    <MudText Typo="Typo.h6">2. Select Consent Purpose</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Choose the purpose for processing this personal data
+                    </MudText>
+
+                    <MudGrid Container="true" Spacing="2">
+                        <MudItem xs="12" md="6">
+                            <MudPaper Class="@(GetPurposeClass(1))"
+                                     Elevation="1"
+                                     @onclick="@(() => SelectPurpose(1))">
+                                <MudStack Spacing="1">
+                                    <MudStack Direction="Direction.Horizontal" Spacing="1" AlignItems="AlignItems.Center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Campaign" Color="Color.Primary" />
+                                        <MudText Typo="Typo.subtitle1">Marketing</MudText>
+                                    </MudStack>
+                                    <MudText Typo="Typo.body2">
+                                        Promotional communications, newsletters, marketing campaigns
+                                    </MudText>
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudPaper Class="@(GetPurposeClass(2))"
+                                     Elevation="1"
+                                     @onclick="@(() => SelectPurpose(2))">
+                                <MudStack Spacing="1">
+                                    <MudStack Direction="Direction.Horizontal" Spacing="1" AlignItems="AlignItems.Center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Description" Color="Color.Success" />
+                                        <MudText Typo="Typo.subtitle1">Contractual</MudText>
+                                    </MudStack>
+                                    <MudText Typo="Typo.body2">
+                                        Service delivery, contract fulfillment, essential operations
+                                    </MudText>
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudPaper Class="@(GetPurposeClass(3))"
+                                     Elevation="1"
+                                     @onclick="@(() => SelectPurpose(3))">
+                                <MudStack Spacing="1">
+                                    <MudStack Direction="Direction.Horizontal" Spacing="1" AlignItems="AlignItems.Center">
+                                        <MudIcon Icon="@Icons.Material.Filled.SupportAgent" Color="Color.Info" />
+                                        <MudText Typo="Typo.subtitle1">Support</MudText>
+                                    </MudStack>
+                                    <MudText Typo="Typo.body2">
+                                        Customer support, technical assistance, help desk
+                                    </MudText>
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudPaper Class="@(GetPurposeClass(4))"
+                                     Elevation="1"
+                                     @onclick="@(() => SelectPurpose(4))">
+                                <MudStack Spacing="1">
+                                    <MudStack Direction="Direction.Horizontal" Spacing="1" AlignItems="AlignItems.Center">
+                                        <MudIcon Icon="@Icons.Material.Filled.Gavel" Color="Color.Warning" />
+                                        <MudText Typo="Typo.subtitle1">Legal</MudText>
+                                    </MudStack>
+                                    <MudText Typo="Typo.body2">
+                                        Legal compliance, regulatory requirements, official records
+                                    </MudText>
+                                </MudStack>
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+
+                    <MudTextField T="int" Label="Selected Purpose" @bind-Value="consentForm.Purpose" Required="true" Hidden="true" />
+                </MudStack>
+
+                <MudDivider />
+
+                <!-- Consent Details -->
+                <MudStack Spacing="3">
+                    <MudText Typo="Typo.h6">3. Consent Details</MudText>
+
+                    <MudRadioGroup @bind-Value="@consentForm.OptIn">
+                    <MudRadio T="bool" Value="@true" Color="Color.Success">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.subtitle1">I consent to data processing</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                I agree to the processing of my personal data for the selected purpose
+                            </MudText>
+                        </MudStack>
+                    </MudRadio>
+
+                    <MudRadio T="bool" Value="@false" Color="Color.Error">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.subtitle1">I withdraw my consent</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                I do not consent to the processing of my personal data for this purpose
+                            </MudText>
+                        </MudStack>
+                    </MudRadio>
+                </MudRadioGroup>
+
+                    <MudTextField T="string"
+                                  Label="Channel"
+                                  @bind-Value="consentForm.Channel"
+                                  Required="true"
+                                  HelperText="How consent was obtained (e.g., Web Form, Email, Phone, In Person)" />
+
+                    <MudTextField T="string"
+                                  Label="Source"
+                                  @bind-Value="consentForm.Source"
+                                  HelperText="Source of consent (e.g., Newsletter Signup, Contract, Support Ticket)" />
+
+                    <MudDatePicker Label="Consent Date"
+                                    @bind-Date="consentForm.At"
+                                    HelperText="Date when consent was given (defaults to today)" />
+
+                    <MudDatePicker Label="Valid Until"
+                                    @bind-Date="consentForm.ValidUntil"
+                                    HelperText="Optional: When consent expires (leave blank for indefinite)" />
+
+                    <MudTextField T="string"
+                                  Label="Notes"
+                                  @bind-Value="consentForm.Notes"
+                                  Multiline="true"
+                                  Rows="3"
+                                  HelperText="Additional notes or context about this consent" />
+                </MudStack>
+
+                <!-- Submit Actions -->
+                <MudStack Spacing="2" Class="mt-4">
+                    <MudButton Type="submit"
+                              Variant="Variant.Filled"
+                              Color="Color.Primary"
+                              StartIcon="@Icons.Material.Filled.Save"
+                              Size="Size.Large"
+                              Disabled="@isSubmitting"
+                              FullWidth="true">
+                        @(isSubmitting ? "Recording..." : "Record Consent")
+                    </MudButton>
+
+                    <MudButton Variant="Variant.Outlined"
+                              Color="Color.Secondary"
+                              StartIcon="@Icons.Material.Filled.Cancel"
+                              OnClick="@(() => Navigation.NavigateTo("/lgpd"))"
+                              Disabled="@isSubmitting">
+                        Cancel
+                    </MudButton>
+                </MudStack>
+            </EditForm>
+        </MudStack>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private ConsentForm consentForm = new();
+    private bool isSubmitting = false;
+    private int selectedPurpose = 0;
+
+    // Constants
+    private const string EMPTY = "empty";
+
+    // Mock data - replace with actual API calls
+    private List<ClientDto> clients = new();
+    private List<ContactDto> contacts = new();
+
+    // Form model
+    public class ConsentForm
+    {
+        public int OwnerType { get; set; }
+        public string OwnerIdString { get; set; } = string.Empty;
+        public Guid OwnerId { get; set; }
+        public int Purpose { get; set; }
+        public bool OptIn { get; set; } = true;
+        public string Channel { get; set; } = string.Empty;
+        public DateTime? At { get; set; }
+        public string? Source { get; set; }
+        public DateTime? ValidUntil { get; set; }
+        public string? Notes { get; set; }
+    }
+
+    // DTOs (would normally be shared with backend)
+    public class ClientDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+    }
+
+    public class ContactDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadOwners();
+    }
+
+    private async Task LoadOwners()
+    {
+        try
+        {
+            // Mock data - replace with actual API calls
+            clients = new List<ClientDto>
+            {
+                new() { Id = "1", Name = "Tech Solutions Inc." },
+                new() { Id = "2", Name = "Global Services Ltd." },
+                new() { Id = "3", Name = "Digital Innovations" }
+            };
+
+            contacts = new List<ContactDto>
+            {
+                new() { Id = "1", FirstName = "João", LastName = "Silva" },
+                new() { Id = "2", FirstName = "Maria", LastName = "Santos" },
+                new() { Id = "3", FirstName = "Carlos", LastName = "Oliveira" }
+            };
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+        }
+    }
+
+    private void SelectPurpose(int purpose)
+    {
+        selectedPurpose = purpose;
+        consentForm.Purpose = purpose;
+    }
+
+    private string GetPurposeClass(int purpose)
+    {
+        return $"purpose-card pa-3 {(selectedPurpose == purpose ? "selected" : "")}";
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (string.IsNullOrEmpty(consentForm.OwnerIdString))
+        {
+            // Show error message
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            // Convert string ID to Guid
+            consentForm.OwnerId = Guid.Parse(consentForm.OwnerIdString);
+
+            // Call API to save consent
+            // var response = await Http.PostAsJsonAsync("/api/crm/consents", consentForm);
+
+            // Mock successful submission
+            await Task.Delay(2000); // Simulate API call
+
+            // Navigate to success page or back to dashboard
+            Navigation.NavigateTo("/lgpd");
+        }
+        catch (Exception ex)
+        {
+            // Handle error
+            // Show error message to user
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

@@ -1,0 +1,105 @@
+using CleanAspire.Application.Features.Consents.Commands;
+using CleanAspire.Application.Features.Consents.DTOs;
+using CleanAspire.Application.Features.Consents.Queries;
+using Mediator;
+using Microsoft.AspNetCore.Mvc;
+
+namespace CleanAspire.Api.Endpoints;
+
+/// <summary>
+/// Simplified version of ConsentEndpointRegistrar.
+/// Phase 4: LGPD Compliance - Consent & Data Privacy
+/// </summary>
+public class ConsentEndpointRegistrarSimplified(ILogger<ConsentEndpointRegistrarSimplified> logger) : IEndpointRegistrar
+{
+    /// <summary>
+    /// Registers the routes for consent-related endpoints.
+    /// </summary>
+    /// <param name="routes">The route builder to which the endpoints will be added.</param>
+    public void RegisterRoutes(IEndpointRouteBuilder routes)
+    {
+        // LGPD Compliance endpoints
+        var group = routes.MapGroup("/api/crm/consents").WithTags("LGPD.Consents").RequireAuthorization();
+
+        /// <summary>
+        /// Records a new consent or updates an existing one.
+        /// </summary>
+        group.MapPost("/", async ([FromServices] IMediator mediator, [FromBody] CreateConsentDto request) =>
+        {
+            var command = new RecordConsentCommand
+            {
+                OwnerType = request.OwnerType,
+                OwnerId = request.OwnerId,
+                Purpose = request.Purpose,
+                OptIn = request.OptIn,
+                Channel = request.Channel,
+                At = request.At,
+                Source = request.Source,
+                IpAddress = request.IpAddress,
+                UserAgent = request.UserAgent,
+                Notes = request.Notes,
+                ValidUntil = request.ValidUntil
+            };
+
+            return await mediator.Send(command);
+        })
+        .Produces<ConsentDto>(StatusCodes.Status200OK)
+        .WithSummary("Record consent")
+        .WithDescription("Records a new consent or updates an existing consent for a data subject.");
+
+        /// <summary>
+        /// Gets consents by owner.
+        /// </summary>
+        group.MapGet("/owner/{ownerType}/{ownerId}", async ([FromServices] IMediator mediator,
+            [FromRoute] int ownerType, [FromRoute] Guid ownerId, [FromQuery] bool includeInactive = false) =>
+        {
+            var query = new GetConsentsByOwnerQuery
+            {
+                OwnerType = ownerType,
+                OwnerId = ownerId,
+                IncludeInactive = includeInactive
+            };
+
+            return await mediator.Send(query);
+        })
+        .Produces<List<ConsentListDto>>(StatusCodes.Status200OK)
+        .WithSummary("Get consents by owner")
+        .WithDescription("Retrieves all consents for a specific data subject (client or contact).");
+
+        /// <summary>
+        /// Exports personal data for a data subject.
+        /// </summary>
+        group.MapPost("/export", async ([FromServices] IMediator mediator, [FromBody] DataExportRequestDto request) =>
+        {
+            var command = new RequestDataExportCommandSimplified
+            {
+                OwnerType = request.OwnerType,
+                OwnerId = request.OwnerId,
+                Format = request.Format
+            };
+
+            return await mediator.Send(command);
+        })
+        .Produces<DataProcessingRequestResponseDto>(StatusCodes.Status200OK)
+        .WithSummary("Export personal data")
+        .WithDescription("Exports all personal data for a data subject in the specified format (JSON or CSV).");
+
+        /// <summary>
+        /// Requests erasure of personal data (right to be forgotten).
+        /// </summary>
+        group.MapPost("/erasure", async ([FromServices] IMediator mediator, [FromBody] DataErasureRequestDto request) =>
+        {
+            var command = new RequestErasureCommandSimplified
+            {
+                OwnerType = request.OwnerType,
+                OwnerId = request.OwnerId,
+                Reason = request.Reason
+            };
+
+            return await mediator.Send(command);
+        })
+        .Produces<DataProcessingRequestResponseDto>(StatusCodes.Status200OK)
+        .WithSummary("Request data erasure")
+        .WithDescription("Requests the deletion or anonymization of personal data for a data subject (LGPD right to be forgotten).");
+    }
+}

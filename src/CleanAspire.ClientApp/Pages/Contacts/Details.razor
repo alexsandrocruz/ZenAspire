@@ -1,0 +1,430 @@
+@page "/contacts/details/{ContactId}"
+@using CleanAspire.ClientApp.Pages.Contacts.Components
+@using CleanAspire.ClientApp.Services.Contacts
+@using CleanAspire.ClientApp.Shared
+@using CleanAspire.ClientApp.Shared.Components
+@using CleanAspire.ClientApp.DTOs
+
+@inject ContactServiceProxy ContactServiceProxy
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject HttpClient HttpClient
+
+<PageTitle>@(_contact?.FullName ?? "Contact Details")</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    @if (_loading)
+    {
+        <MudStack AlignItems="AlignItems.Center" Class="py-8">
+            <MudProgressCircular Indeterminate="true" />
+            <MudText Typo="Typo.body2">@L["Loading contact details..."]</MudText>
+        </MudStack>
+    }
+    else if (_error != null)
+    {
+        <MudAlert Severity="Severity.Error" Class="mb-4">
+            @L["Error loading contact: {0}", _error]
+        </MudAlert>
+        <MudButton OnClick="GoBack" Variant="Variant.Outlined">
+            <MudIcon Icon="@Icons.Material.Filled.ArrowBack" Class="mr-2" />
+            @L["Back to Contacts"]
+        </MudButton>
+    }
+    else if (_contact != null)
+    {
+        <!-- Header -->
+        <MudPaper Class="pa-4 mb-4">
+            <MudStack Row Spacing="2" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                <MudStack Row Spacing="2" AlignItems="AlignItems.Center">
+                    <MudIconButton Icon="@Icons.Material.Filled.ArrowBack"
+                                   OnClick="GoBack"
+                                   Size="Size.Medium"
+                                   Title="@L["Back to Contacts"]" />
+                    <MudIcon Icon="@Icons.Material.Filled.Person" Size="Size.Large" />
+                    <MudStack Spacing="0">
+                        <MudText Typo="Typo.h5">@_contact.FullName</MudText>
+                        <MudStack Row Spacing="2">
+                            @if (!string.IsNullOrEmpty(_contact.JobTitle))
+                            {
+                                <MudText Typo="Typo.body2" Color="Color.Default">@_contact.JobTitle</MudText>
+                            }
+                            @if (!string.IsNullOrEmpty(_contact.CompanyName))
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+                                    <MudIcon Icon="@Icons.Material.Filled.Business" Size="Size.Small" Class="mr-1" />
+                                    @_contact.CompanyName
+                                </MudChip>
+                            }
+                            <MudChip T="string" Size="Size.Small" Color="@GetContactTypeColor(_contact.Type)">
+                                @_contact.TypeName
+                            </MudChip>
+                            <MudChip T="string" Size="Size.Small" Color="@GetStatusColor(_contact.Status)">
+                                @_contact.StatusName
+                            </MudChip>
+                            @if (_contact.IsMainContact)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info">@L["Main Contact"]</MudChip>
+                            }
+                            @if (_contact.IsDecisionMaker)
+                            {
+                                <MudChip T="string" Size="Size.Small" Color="Color.Warning">@L["Decision Maker"]</MudChip>
+                            }
+                        </MudStack>
+                    </MudStack>
+                </MudStack>
+                <MudStack Row Spacing="1">
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Primary"
+                               OnClick="EditContact"
+                               StartIcon="@Icons.Material.Filled.Edit">
+                        @L["Edit"]
+                    </MudButton>
+                    <MudButton Variant="Variant.Outlined"
+                               Color="Color.Error"
+                               OnClick="DeleteContact"
+                               StartIcon="@Icons.Material.Filled.Delete">
+                        @L["Delete"]
+                    </MudButton>
+                </MudStack>
+            </MudStack>
+        </MudPaper>
+
+        <!-- Tabs -->
+        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-4">
+            <!-- Overview Tab -->
+            <MudTabPanel Text="@L["Overview"]" Icon="@Icons.Material.Filled.Info">
+                <MudPaper Class="pa-4">
+                    <MudGrid Spacing="3">
+                        <!-- Basic Information -->
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.h6" Class="mb-3">@L["Basic Information"]</MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudStack Spacing="1">
+                                <MudText Typo="Typo.caption" Color="Color.Default">@L["First Name"]</MudText>
+                                <MudText Typo="Typo.body1">@_contact.FirstName</MudText>
+                            </MudStack>
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudStack Spacing="1">
+                                <MudText Typo="Typo.caption" Color="Color.Default">@L["Last Name"]</MudText>
+                                <MudText Typo="Typo.body1">@_contact.LastName</MudText>
+                            </MudStack>
+                        </MudItem>
+
+                        @if (!string.IsNullOrEmpty(_contact.JobTitle))
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.caption" Color="Color.Default">@L["Job Title"]</MudText>
+                                    <MudText Typo="Typo.body1">@_contact.JobTitle</MudText>
+                                </MudStack>
+                            </MudItem>
+                        }
+
+                        @if (!string.IsNullOrEmpty(_contact.Department))
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.caption" Color="Color.Default">@L["Department"]</MudText>
+                                    <MudText Typo="Typo.body1">@_contact.Department</MudText>
+                                </MudStack>
+                            </MudItem>
+                        }
+
+                        <!-- Contact Information -->
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.h6" Class="mb-3 mt-3">@L["Contact Information"]</MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudStack Spacing="1">
+                                <MudText Typo="Typo.caption" Color="Color.Default">@L["Email"]</MudText>
+                                <MudText Typo="Typo.body1">@_contact.Email</MudText>
+                            </MudStack>
+                        </MudItem>
+
+                        @if (!string.IsNullOrEmpty(_contact.Phone))
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.caption" Color="Color.Default">@L["Phone"]</MudText>
+                                    <MudText Typo="Typo.body1">@_contact.Phone</MudText>
+                                </MudStack>
+                            </MudItem>
+                        }
+
+                        @if (!string.IsNullOrEmpty(_contact.MobilePhone))
+                        {
+                            <MudItem xs="12" md="6">
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.caption" Color="Color.Default">@L["Mobile Phone"]</MudText>
+                                    <MudText Typo="Typo.body1">@_contact.MobilePhone</MudText>
+                                </MudStack>
+                            </MudItem>
+                        }
+
+                        <!-- Associated Client -->
+                        @if (!string.IsNullOrEmpty(_contact.ClientDisplayName))
+                        {
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.h6" Class="mb-3 mt-3">@L["Associated Client"]</MudText>
+                            </MudItem>
+
+                            <MudItem xs="12" md="6">
+                                <MudStack Spacing="1">
+                                    <MudText Typo="Typo.caption" Color="Color.Default">@L["Client"]</MudText>
+                                    <MudButton Variant="Variant.Text"
+                                               Color="Color.Primary"
+                                               StartIcon="@Icons.Material.Filled.Business"
+                                               OnClick="ViewClient">
+                                        @_contact.ClientDisplayName
+                                    </MudButton>
+                                </MudStack>
+                            </MudItem>
+                        }
+
+                        <!-- Dates -->
+                        @if (_contact.BirthDate.HasValue || _contact.LastContactDate.HasValue)
+                        {
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.h6" Class="mb-3 mt-3">@L["Important Dates"]</MudText>
+                            </MudItem>
+
+                            @if (_contact.BirthDate.HasValue)
+                            {
+                                <MudItem xs="12" md="6">
+                                    <MudStack Spacing="1">
+                                        <MudText Typo="Typo.caption" Color="Color.Default">@L["Birth Date"]</MudText>
+                                        <MudText Typo="Typo.body1">@_contact.BirthDate.Value.ToString("MMM dd, yyyy")</MudText>
+                                    </MudStack>
+                                </MudItem>
+                            }
+
+                            @if (_contact.LastContactDate.HasValue)
+                            {
+                                <MudItem xs="12" md="6">
+                                    <MudStack Spacing="1">
+                                        <MudText Typo="Typo.caption" Color="Color.Default">@L["Last Contact Date"]</MudText>
+                                        <MudText Typo="Typo.body1">@_contact.LastContactDate.Value.ToString("MMM dd, yyyy")</MudText>
+                                    </MudStack>
+                                </MudItem>
+                            }
+                        }
+
+                        <!-- Additional Information -->
+                        @if (!string.IsNullOrEmpty(_contact.Notes))
+                        {
+                            <MudItem xs="12">
+                                <MudText Typo="Typo.h6" Class="mb-3 mt-3">@L["Notes"]</MudText>
+                                <MudText Typo="Typo.body2">@_contact.Notes</MudText>
+                            </MudItem>
+                        }
+                    </MudGrid>
+                </MudPaper>
+            </MudTabPanel>
+
+            <!-- Timeline Tab -->
+            <MudTabPanel Text="@L["Timeline"]" Icon="@Icons.Material.Filled.Timeline">
+                <TimelineView OwnerType="OwnerType.Contact"
+                              OwnerId="@_contactGuid"
+                              Title="@L["Contact Timeline"]"
+                              ShowFilters="true" />
+            </MudTabPanel>
+
+            <!-- Activities Tab -->
+            <MudTabPanel Text="@L["Activities"]" Icon="@Icons.Material.Filled.Assignment">
+                <ActivitiesPanel RegardingType="RegardingType.Contact"
+                                 RegardingId="@_contactGuid"
+                                 Title="@L["Contact Activities"]" />
+            </MudTabPanel>
+
+            <!-- Addresses Tab -->
+            <MudTabPanel Text="@L["Addresses"]" Icon="@Icons.Material.Filled.LocationOn">
+                <AddressesPanel OwnerType="OwnerType.Contact"
+                                OwnerId="@_contactGuid"
+                                Title="@L["Contact Addresses"]" />
+            </MudTabPanel>
+
+            <!-- Channels Tab -->
+            <MudTabPanel Text="@L["Channels"]" Icon="@Icons.Material.Filled.Chat">
+                <ChannelsPanel OwnerType="OwnerType.Contact"
+                               OwnerId="@_contactGuid"
+                               Title="@L["Communication Channels"]" />
+            </MudTabPanel>
+
+            <!-- Notes Tab -->
+            <MudTabPanel Text="@L["Notes"]" Icon="@Icons.Material.Filled.StickyNote2">
+                <NotesPanel OwnerType="OwnerType.Contact"
+                            OwnerId="@_contactGuid"
+                            Title="@L["Contact Notes"]" />
+            </MudTabPanel>
+
+            <!-- Tags Tab -->
+            <MudTabPanel Text="@L["Tags"]" Icon="@Icons.Material.Filled.Label">
+                <TagsEditor OwnerType="OwnerType.Contact"
+                            OwnerId="@_contactGuid"
+                            Title="@L["Contact Tags"]" />
+            </MudTabPanel>
+        </MudTabs>
+    }
+</MudContainer>
+
+@code {
+    [Parameter]
+    public string ContactId { get; set; } = string.Empty;
+
+    private ContactDto? _contact;
+    private Guid _contactGuid;
+    private bool _loading = false;
+    private string? _error = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadContact();
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await LoadContact();
+    }
+
+    private async Task LoadContact()
+    {
+        if (string.IsNullOrEmpty(ContactId))
+        {
+            _error = "Contact ID is required";
+            return;
+        }
+
+        if (!Guid.TryParse(ContactId, out _contactGuid))
+        {
+            _error = "Invalid Contact ID format";
+            return;
+        }
+
+        _loading = true;
+        _error = null;
+        StateHasChanged();
+
+        try
+        {
+            _contact = await ContactServiceProxy.GetContactByIdAsync(ContactId);
+
+            if (_contact == null)
+            {
+                _error = "Contact not found";
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+            Snackbar.Add(@L["Error loading contact: {0}", ex.Message], Severity.Error);
+        }
+        finally
+        {
+            _loading = false;
+            StateHasChanged();
+        }
+    }
+
+    private void GoBack()
+    {
+        Navigation.NavigateTo("/contacts/index");
+    }
+
+    private async Task EditContact()
+    {
+        if (_contact == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["IsEdit"] = true,
+            ["Contact"] = _contact
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Large,
+        };
+
+        var dialog = DialogService.Show<NewContactDialog>(@L["Edit Contact"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            await LoadContact();
+        }
+    }
+
+    private async Task DeleteContact()
+    {
+        if (_contact == null) return;
+
+        var parameters = new DialogParameters
+        {
+            ["Message"] = string.Format(@L["Are you sure you want to delete the contact '{0}'? This action cannot be undone."], _contact.FullName)
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+        };
+
+        var dialog = DialogService.Show<DeleteConfirmationDialog>(@L["Delete Contact"], parameters, options);
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false })
+        {
+            var success = await ContactServiceProxy.DeleteContactAsync(_contact.Id);
+            if (success)
+            {
+                Snackbar.Add(@L["Contact deleted successfully"], Severity.Success);
+                GoBack();
+            }
+            else
+            {
+                Snackbar.Add(@L["Failed to delete contact"], Severity.Error);
+            }
+        }
+    }
+
+    private void ViewClient()
+    {
+        if (!string.IsNullOrEmpty(_contact?.ClientId))
+        {
+            Navigation.NavigateTo($"/clients/details/{_contact.ClientId}");
+        }
+    }
+
+    private Color GetContactTypeColor(int type)
+    {
+        return type switch
+        {
+            1 => Color.Warning,    // Lead
+            2 => Color.Info,       // Prospect
+            3 => Color.Success,    // Client
+            4 => Color.Primary,    // Partner
+            5 => Color.Secondary,  // Vendor
+            6 => Color.Default,    // Employee
+            _ => Color.Default
+        };
+    }
+
+    private Color GetStatusColor(int status)
+    {
+        return status switch
+        {
+            1 => Color.Success,    // Active
+            2 => Color.Default,    // Inactive
+            3 => Color.Info,       // Qualified
+            4 => Color.Warning,    // Unqualified
+            _ => Color.Default
+        };
+    }
+}
